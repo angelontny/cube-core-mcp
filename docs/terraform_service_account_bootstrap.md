@@ -54,34 +54,31 @@ If a developer accidentally misconfigures an IAM block or replaces `google_proje
 
 ## 3. Automated 1-Minute Bootstrap Script
 
-Instead of manually clicking through multiple screens in the Google Cloud Console, execute this idempotent bash script once as a project admin.
+Instead of manually clicking through multiple screens in the Google Cloud Console, execute the standalone bootstrap script located at [bootstrap_terraform_sa.sh](file:///home/angelo/projects/cube-core-mcp/docs/bootstrap_terraform_sa.sh).
 
-### Prerequisites
-* You are authenticated with a user account that has `roles/owner` or `roles/resourcemanager.projectIamAdmin` on the target GCP project:
-  ```bash
-  gcloud auth login
-  ```
+### Quick Execution via Google Cloud Shell / Terminal
+You can run the script file directly by passing your GCP Project ID:
+```bash
+# Direct execution (passes project ID as an argument)
+bash docs/bootstrap_terraform_sa.sh <YOUR_GCP_PROJECT_ID>
 
-### Bootstrap Script
-Set your `PROJECT_ID` and run the script below:
+# Or in Google Cloud Shell (auto-detects the currently active project)
+bash docs/bootstrap_terraform_sa.sh
+```
+
+### Script Source Reference
+If you prefer to copy and paste the script directly into your terminal or Cloud Console CLI, use the block below:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
 PROJECT_ID="your-gcp-project-id" # <-- Replace with your GCP Project ID
-SA_NAME="terraform-sa"
+SA_NAME="terraform"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "==> Setting active project to: ${PROJECT_ID}"
 gcloud config set project "${PROJECT_ID}"
-
-echo "==> Enabling core Service Usage and Resource Manager APIs..."
-gcloud services enable \
-  serviceusage.googleapis.com \
-  cloudresourcemanager.googleapis.com \
-  iam.googleapis.com \
-  --project="${PROJECT_ID}"
 
 echo "==> Checking if Service Account exists..."
 if ! gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
