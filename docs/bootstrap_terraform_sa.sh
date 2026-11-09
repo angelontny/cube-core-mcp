@@ -36,7 +36,17 @@ echo "=================================================================="
 # Set active project
 gcloud config set project "${PROJECT_ID}" --quiet
 
-echo "==> [1/3] Verifying Service Account existence..."
+echo "==> [1/4] Activating foundational GCP APIs..."
+# Service Usage API is required for Terraform to query or enable any services.
+# Cloud Resource Manager and IAM APIs are required for role and SA management.
+gcloud services enable \
+  serviceusage.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  iam.googleapis.com \
+  --project="${PROJECT_ID}" \
+  --quiet
+
+echo "==> [2/4] Verifying Service Account existence..."
 if ! gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
   echo "    Creating Service Account: ${SA_NAME}"
   gcloud iam service-accounts create "${SA_NAME}" \
@@ -47,7 +57,7 @@ else
   echo "    Service Account already exists. Proceeding with role bindings."
 fi
 
-echo "==> [2/3] Assigning baseline deployment IAM roles..."
+echo "==> [3/4] Assigning baseline deployment IAM roles..."
 ROLES=(
   "roles/serviceusage.serviceUsageAdmin"        # Allows Terraform to enable APIs declaratively
   "roles/storage.admin"                       # Remote state bucket and Cube Store storage
@@ -67,7 +77,7 @@ for role in "${ROLES[@]}"; do
     --quiet >/dev/null
 done
 
-echo "==> [3/3] Configuring Keyless User Impersonation..."
+echo "==> [4/4] Configuring Keyless User Impersonation..."
 CURRENT_USER=$(gcloud config get-value account 2>/dev/null || true)
 
 if [[ -n "${CURRENT_USER}" && "${CURRENT_USER}" != "(unset)" ]]; then

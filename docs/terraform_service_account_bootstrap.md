@@ -50,6 +50,9 @@ When destroying an environment, Terraform determines the destruction order via d
 ### C. Accidental Lockout Risk
 If a developer accidentally misconfigures an IAM block or replaces `google_project_iam_member` (additive) with `google_project_iam_binding` (authoritative), Terraform will overwrite all other roles on the project. This can permanently lock the Service Account and your CI/CD pipeline out of the GCP project.
 
+### D. The Service Usage API Dependency (API Bootstrap Paradox)
+Terraform manages GCP APIs declaratively via the `google_project_service` resource. However, under the hood, the Google provider queries Google Cloud's Service Usage API (`serviceusage.googleapis.com`) to inspect and activate APIs. On newly provisioned projects, `serviceusage.googleapis.com` is disabled by default. If Terraform attempts to read or declare services before the Service Usage API is activated, GCP rejects the request with HTTP `403 Service Usage API has not been used in project ... before or it is disabled`. Terraform cannot enable the very API it requires to enable APIs; therefore, core bootstrap APIs must be enabled via `gcloud` during Tier 0 bootstrap.
+
 ---
 
 ## 3. Automated 1-Minute Bootstrap Script
@@ -78,9 +81,19 @@ SA_NAME="terraform"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "==> Setting active project to: ${PROJECT_ID}"
-gcloud config set project "${PROJECT_ID}"
+gcloud config set project "${PROJECT_ID}" --quiet
 
-echo "==> Checking if Service Account exists..."
+echo "==> [1/4] Activating foundational GCP APIs..."
+# Service Usage API is required for Terraform to query or enable any services.
+# Cloud Resource Manager and IAM APIs are required for role and SA management.
+gcloud services enable \
+  serviceusage.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  iam.googleapis.com \
+  --project="${PROJECT_ID}" \
+  --quiet
+
+echo "==> [2/4] Checking if Service Account exists..."
 if ! gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
   echo "==> Creating Service Account: ${SA_NAME}"
   gcloud iam service-accounts create "${SA_NAME}" \
@@ -91,7 +104,7 @@ else
   echo "==> Service Account ${SA_EMAIL} already exists. Skipping creation."
 fi
 
-echo "==> Assigning baseline deployment roles to ${SA_EMAIL}..."
+echo "==> [3/4] Assigning baseline deployment roles to ${SA_EMAIL}..."
 ROLES=(
   "roles/serviceusage.serviceUsageAdmin"        # Allows Terraform to enable APIs declaratively
   "roles/storage.admin"                       # Remote state bucket & Cube Store storage
@@ -111,7 +124,7 @@ for role in "${ROLES[@]}"; do
     --quiet >/dev/null
 done
 
-echo "==> Configuring User Impersonation (Keyless Local Auth)..."
+echo "==> [4/4] Configuring User Impersonation (Keyless Local Auth)..."
 CURRENT_USER=$(gcloud config get-value account)
 echo "    -> Granting Service Account Token Creator to ${CURRENT_USER}..."
 gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \

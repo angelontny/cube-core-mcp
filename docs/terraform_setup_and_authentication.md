@@ -128,14 +128,14 @@ You can define the required APIs directly in Terraform. By setting `disable_on_d
 
 ```hcl
 locals {
+  # Foundational APIs (serviceusage, cloudresourcemanager, iam) are activated
+  # during Tier 0 bootstrap. Terraform manages workload infrastructure APIs:
   required_services = [
-    "compute.googleapis.com",              # Spot VM / Compute Engine
-    "run.googleapis.com",                  # Cloud Run (Cube Core API & FastMCP)
-    "storage.googleapis.com",              # GCS Bucket for Cube Store
-    "vpcaccess.googleapis.com",            # Serverless VPC Access / Direct VPC Egress
-    "iam.googleapis.com",                  # IAM & Service Account management
-    "cloudresourcemanager.googleapis.com", # Project resource metadata
-    "logging.googleapis.com",              # Cloud Logging sinks
+    "compute.googleapis.com",   # Spot VM / Compute Engine
+    "run.googleapis.com",       # Cloud Run (Cube Core API & FastMCP)
+    "storage.googleapis.com",   # GCS Bucket for Cube Store
+    "vpcaccess.googleapis.com", # Serverless VPC Access / Direct VPC Egress
+    "logging.googleapis.com",   # Cloud Logging sinks
   ]
 }
 
@@ -315,13 +315,11 @@ variable "gcp_services" {
   type        = list(string)
   description = "List of GCP APIs to enable for Phase 1 infrastructure."
   default = [
-    "compute.googleapis.com",              # Spot VM & MIG
-    "run.googleapis.com",                  # Cloud Run Services
-    "storage.googleapis.com",              # GCS Buckets (Cube Store & State)
-    "vpcaccess.googleapis.com",            # Direct VPC Egress / Serverless Connector
-    "iam.googleapis.com",                  # IAM Roles & Service Accounts
-    "cloudresourcemanager.googleapis.com", # Project metadata & IAM policy bindings
-    "logging.googleapis.com",              # Cloud Logging sinks
+    "compute.googleapis.com",   # Spot VM & MIG
+    "run.googleapis.com",       # Cloud Run Services
+    "storage.googleapis.com",   # GCS Buckets (Cube Store & State)
+    "vpcaccess.googleapis.com", # Direct VPC Egress / Serverless Connector
+    "logging.googleapis.com",   # Cloud Logging sinks
   ]
 }
 ```
