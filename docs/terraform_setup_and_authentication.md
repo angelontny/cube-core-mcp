@@ -66,6 +66,37 @@ gcloud version
 
 ---
 
+### C. Google Cloud Project & Billing Account Association (Mandatory)
+Every Google Cloud project requires an active Cloud Billing account linked before foundational APIs (such as `serviceusage.googleapis.com` or `compute.googleapis.com`) can be activated. If billing is omitted or unlinked, API enablement and Terraform resource queries will fail with `403 Forbidden` errors:
+
+> `googleapi: Error 403: Service Usage API has not been used in project ... before or it is disabled.`
+
+#### 1. Check Project Billing Status
+```bash
+gcloud billing projects describe <YOUR_GCP_PROJECT_ID>
+```
+If billing is properly linked, the output will display:
+```yaml
+billingAccountName: billingAccounts/012345-6789AB-CDEF01
+billingEnabled: true
+name: projects/your-gcp-project-id/billingInfo
+projectId: your-gcp-project-id
+```
+
+#### 2. Link a Billing Account (If `billingEnabled: false`)
+List available billing accounts associated with your Google identity:
+```bash
+gcloud billing accounts list
+```
+Link your billing account to the target project:
+```bash
+gcloud billing projects link <YOUR_GCP_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
+```
+Alternatively, link it directly in the web console:
+`https://console.cloud.google.com/billing/linkedaccount?project=<YOUR_GCP_PROJECT_ID>`
+
+---
+
 ## 2. Google Cloud Authentication via Application Default Credentials (ADC)
 
 Google Cloud officially recommends using **Application Default Credentials (ADC)** for authenticating Terraform during local development.

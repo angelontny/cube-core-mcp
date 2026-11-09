@@ -36,7 +36,23 @@ echo "=================================================================="
 # Set active project
 gcloud config set project "${PROJECT_ID}" --quiet
 
-echo "==> [1/4] Activating foundational GCP APIs..."
+echo "==> [1/5] Verifying Project Billing status..."
+BILLING_ENABLED=$(gcloud billing projects describe "${PROJECT_ID}" --format="value(billingEnabled)" 2>/dev/null || echo "unknown")
+if [[ "${BILLING_ENABLED}" == "False" ]]; then
+  echo "Error: Cloud Billing is NOT enabled on project '${PROJECT_ID}'."
+  echo "GCP APIs and resources cannot be activated without an active linked billing account."
+  echo "To link a billing account, run:"
+  echo "  gcloud billing accounts list"
+  echo "  gcloud billing projects link ${PROJECT_ID} --billing-account=<BILLING_ACCOUNT_ID>"
+  echo "  or visit: https://console.cloud.google.com/billing/linkedaccount?project=${PROJECT_ID}"
+  exit 1
+elif [[ "${BILLING_ENABLED}" == "True" ]]; then
+  echo "    Billing is active on project '${PROJECT_ID}'."
+else
+  echo "    Notice: Unable to verify billing status (may require billing viewer permissions). Proceeding..."
+fi
+
+echo "==> [2/5] Activating foundational GCP APIs..."
 # Service Usage API is required for Terraform to query or enable any services.
 # Cloud Resource Manager and IAM APIs are required for role and SA management.
 gcloud services enable \
@@ -46,7 +62,7 @@ gcloud services enable \
   --project="${PROJECT_ID}" \
   --quiet
 
-echo "==> [2/4] Verifying Service Account existence..."
+echo "==> [3/5] Verifying Service Account existence..."
 if ! gcloud iam service-accounts describe "${SA_EMAIL}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
   echo "    Creating Service Account: ${SA_NAME}"
   gcloud iam service-accounts create "${SA_NAME}" \
@@ -57,7 +73,7 @@ else
   echo "    Service Account already exists. Proceeding with role bindings."
 fi
 
-echo "==> [3/4] Assigning baseline deployment IAM roles..."
+echo "==> [4/5] Assigning baseline deployment IAM roles..."
 ROLES=(
   "roles/serviceusage.serviceUsageAdmin"        # Allows Terraform to enable APIs declaratively
   "roles/storage.admin"                       # Remote state bucket and Cube Store storage
@@ -77,7 +93,7 @@ for role in "${ROLES[@]}"; do
     --quiet >/dev/null
 done
 
-echo "==> [4/4] Configuring Keyless User Impersonation..."
+echo "==> [5/5] Configuring Keyless User Impersonation..."
 CURRENT_USER=$(gcloud config get-value account 2>/dev/null || true)
 
 if [[ -n "${CURRENT_USER}" && "${CURRENT_USER}" != "(unset)" ]]; then
