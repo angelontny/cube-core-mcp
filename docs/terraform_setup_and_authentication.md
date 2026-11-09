@@ -2,6 +2,9 @@
 
 This guide details the official, Google-recommended procedure for installing Terraform, installing the Google Cloud CLI (`gcloud`), and configuring authentication for infrastructure deployment as outlined in [semantic_layer_execution_plan.md](file:///home/angelo/projects/cube-core-mcp/docs/semantic_layer_execution_plan.md).
 
+Related Documents:
+* [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md) — Automated script and IAM rationale for bootstrapping the Terraform Service Account.
+
 ---
 
 ## 1. Prerequisites & Installation
@@ -87,7 +90,10 @@ gcloud auth application-default set-quota-project <YOUR_GCP_PROJECT_ID>
 ```
 
 ### Step 3: (Recommended Enterprise Pattern) Service Account Impersonation
-Google Cloud strongly discourages exporting static Service Account JSON keys to local workstations. Instead, developers can impersonate a dedicated Terraform service account using their user identity:
+Google Cloud strongly discourages exporting static Service Account JSON keys to local workstations. Instead, developers can impersonate a dedicated Terraform service account using their user identity.
+
+> [!TIP]
+> To automatically create this service account and grant all required deployment roles via a 1-minute script, see [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md).
 
 1. Grant your user account the role `roles/iam.serviceAccountTokenCreator` on the target Terraform Service Account.
 2. Authenticate ADC via impersonation:
@@ -107,13 +113,14 @@ For Terraform to manage and enable other APIs on the project, the authenticating
 2. **Base API Enabled:** `serviceusage.googleapis.com` (enabled by default on all standard GCP projects; enables Terraform to communicate with GCP's Service Usage API).
 
 ### B. Required IAM Roles for the Terraform Service Account
-Grant these roles to `terraform-sa@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com`:
+The Terraform deployment Service Account requires baseline project-level roles (provisioned via [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md)):
 * `roles/serviceusage.serviceUsageAdmin` (to enable the APIs listed below automatically)
 * `roles/storage.admin` (for GCS backend state and Cube Store storage)
 * `roles/compute.instanceAdmin.v1` (for Spot VM & Managed Instance Groups)
 * `roles/run.admin` (for Cloud Run service deployments)
-* `roles/vpcaccess.admin` or `roles/compute.networkAdmin` (for Direct VPC Egress / VPC setup)
+* `roles/compute.networkAdmin` (for Direct VPC Egress / VPC setup)
 * `roles/iam.serviceAccountUser` (to attach runtime service accounts to Cloud Run & VMs)
+* `roles/resourcemanager.projectIamAdmin` (to manage runtime service account role bindings)
 
 ### C. Enabling APIs Declaratively in Terraform (`google_project_service`)
 You can define the required APIs directly in Terraform. By setting `disable_on_destroy = false`, you prevent Terraform from accidentally disabling critical APIs if the resource configuration is modified or destroyed:
