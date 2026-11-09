@@ -66,6 +66,8 @@ cube-core-mcp/
     ├── state_bucket.tf                       # GCS remote state bucket definition
     ├── bigquery.tf                           # BigQuery datasets and cross-region Data Transfer config
     └── outputs.tf                            # Output values (project, state bucket, enabled APIs)
+└── src/                                      # Application services and transformation layers
+    └── dbt/                                  # Native dbt project transforming thelook_ecommerce
 ```
 
 ---

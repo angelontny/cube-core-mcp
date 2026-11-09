@@ -34,6 +34,7 @@ cube-core-mcp/
 │   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
 │   └── (Phase 1 planned modules)          # networking.tf, storage.tf, compute.tf, cloud_run.tf
 ├── src/                                   # Application code (Phases 2-4)
+│   ├── dbt/                               # Native dbt project (thelook transformations & manifest generator)
 │   ├── cube/                              # Cube Core Dockerfile, schema definitions, dbt parsers
 │   ├── fastmcp/                           # Python FastMCP service, OAuth middleware, formatters
 │   └── bridge/                            # Local stdio-to-SSE proxy bridge with OS keychain integration
@@ -43,6 +44,11 @@ cube-core-mcp/
 
 ## 4. Toolchain & Execution
 All commands must be executed from their respective root directories without bypass flags.
+
+### dbt Project Lifecycle (`cd src/dbt`)
+* **Debug Connection:** `export DBT_PROFILES_DIR=. && dbt debug`
+* **Run / Build Models:** `export DBT_PROFILES_DIR=. && dbt build`
+* **Compile Manifest for Cube Core:** `export DBT_PROFILES_DIR=. && dbt compile`
 
 ### Terraform Lifecycle (`cd terraform`)
 * **Format:** `terraform fmt -check` (inspect) or `terraform fmt` (apply format)

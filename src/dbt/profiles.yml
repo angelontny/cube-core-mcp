@@ -1,0 +1,12 @@
+cube_thelook:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID', 'cube-core-mcp') }}"
+      dataset: "{{ env_var('DBT_DATASET', 'analytics') }}"
+      location: "{{ env_var('GCP_REGION', 'asia-south1') }}"
+      threads: 4
+      timeout_seconds: 300
+      priority: interactive

@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: thelook_ecommerce
+    database: "{{ env_var('GCP_PROJECT_ID', 'cube-core-mcp') }}"
+    schema: thelook_ecommerce
+    description: "Raw replicated eCommerce tables in BigQuery, seeded from bigquery-public-data.thelook_ecommerce."
+    tables:
+      - name: orders
+        description: "Customer orders transaction table."
+      - name: order_items
+        description: "Individual line items for each order."
+      - name: products
+        description: "Product catalog information with retail pricing and wholesale cost."
+      - name: users
+        description: "Registered user profiles and demographic metadata."
+      - name: inventory_items
+        description: "Inventory stock items across distribution centers."
+      - name: distribution_centers
+        description: "Fulfillment warehouse locations."
+      - name: events
+        description: "Web and mobile app event logs."
