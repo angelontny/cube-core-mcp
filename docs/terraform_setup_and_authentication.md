@@ -99,7 +99,7 @@ Google Cloud strongly discourages exporting static Service Account JSON keys to 
 1. Grant your user account the role `roles/iam.serviceAccountTokenCreator` on the target Terraform Service Account.
 2. Authenticate ADC via impersonation:
    ```bash
-   gcloud auth application-default login --impersonate-service-account="terraform-sa@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
+   gcloud auth application-default login --impersonate-service-account="terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
    ```
 
 ---

@@ -4,7 +4,7 @@ A serverless, cross-cloud plug-and-play semantic layer architecture combining **
 
 ---
 
-## 🏛 Architecture Overview
+## Architecture Overview
 
 ```mermaid
 flowchart LR
@@ -43,11 +43,12 @@ flowchart LR
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 cube-core-mcp/
 ├── README.md                                 # Project overview and quickstart guide
+├── AGENT.md                                  # AI agent system prompt and operating parameters
 ├── docs/
 │   ├── semantic_layer_execution_plan.md      # Five-phase end-to-end technical roadmap
 │   ├── terraform_setup_and_authentication.md # Local workstation & Terraform setup guide
@@ -65,7 +66,7 @@ cube-core-mcp/
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### 1. Prerequisites
 * **Google Cloud Project** with billing enabled.
@@ -73,14 +74,14 @@ cube-core-mcp/
 * **Terraform** (`>= 1.5.0`) installed ([Installation Guide](docs/terraform_setup_and_authentication.md#a-terraform-installation)).
 
 ### 2. Tier 0: Foundation Service Account Bootstrap
-Before provisioning infrastructure, create the dedicated deployment service account and assign baseline deployment roles via `gcloud`. Follow the automated 1-minute script in [terraform_service_account_bootstrap.md](docs/terraform_service_account_bootstrap.md):
+Before provisioning infrastructure, create the dedicated deployment service account and assign baseline deployment roles via `gcloud`. Run the automated bootstrap script [docs/bootstrap_terraform_sa.sh](docs/bootstrap_terraform_sa.sh) (see [terraform_service_account_bootstrap.md](docs/terraform_service_account_bootstrap.md) for IAM details):
 
 ```bash
 # Authenticate your admin account
 gcloud auth login
 
-# Run the bootstrap commands outlined in docs/terraform_service_account_bootstrap.md
-# to create `terraform-sa` and grant Service Account Token Creator permissions.
+# Run the bootstrap script
+bash docs/bootstrap_terraform_sa.sh <YOUR_GCP_PROJECT_ID>
 ```
 
 ### 3. Local Workstation Authentication (Keyless ADC)
@@ -88,7 +89,7 @@ Generate Application Default Credentials (ADC) by impersonating the newly create
 
 ```bash
 gcloud auth application-default login \
-  --impersonate-service-account="terraform-sa@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
+  --impersonate-service-account="terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
 
 # Set quota project
 gcloud auth application-default set-quota-project <YOUR_GCP_PROJECT_ID>
@@ -116,7 +117,7 @@ terraform apply
 
 ---
 
-## 📚 Documentation Reference Index
+## Documentation Reference Index
 
 * [Semantic Layer Execution Plan](docs/semantic_layer_execution_plan.md) — Comprehensive plan covering:
   * **Phase 1:** Infrastructure as Code (GCS, Spot VM, Cloud Run, VPC Direct Egress).
@@ -130,7 +131,7 @@ terraform apply
 
 ---
 
-## 🔒 Security Best Practices
+## Security Best Practices
 * **No Hardcoded Keys:** Application Default Credentials (ADC) and Service Account impersonation are used exclusively for local development. Static JSON keys are neither generated nor stored.
 * **Separation of Concerns:** Deployment credentials (Tier 0) are decoupled from application runtime identities (Tier 1).
 * **Controlled API Lifecycle:** All GCP APIs managed through `google_project_service` use `disable_on_destroy = false` to prevent accidental cascading outages.
