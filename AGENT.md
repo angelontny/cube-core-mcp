@@ -20,7 +20,8 @@ cube-core-mcp/
 │   ├── bootstrap_terraform_sa.sh          # Automated Tier 0 SA bootstrap script
 │   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
 │   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
-│   └── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
+│   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
+│   └── bigquery_setup_and_sample_data.md  # BigQuery architecture, DTS sample ingestion, & prod guide
 ├── terraform/                             # Declarative cloud infrastructure
 │   ├── versions.tf                        # Engine, Terraform, and provider version pins
 │   ├── backend.tf                         # Partial GCS remote state configuration (prefix only)
@@ -29,6 +30,7 @@ cube-core-mcp/
 │   ├── terraform.tfvars.example           # Committed template for environment variables
 │   ├── services.tf                        # Declarative workload API enablement and propagation timers
 │   ├── state_bucket.tf                    # GCS remote state bucket definition
+│   ├── bigquery.tf                        # BigQuery datasets and cross-region Data Transfer config
 │   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
 │   └── (Phase 1 planned modules)          # networking.tf, storage.tf, compute.tf, cloud_run.tf
 ├── src/                                   # Application code (Phases 2-4)

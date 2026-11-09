@@ -53,7 +53,8 @@ cube-core-mcp/
 │   ├── bootstrap_terraform_sa.sh             # Automated Tier 0 SA bootstrap script
 │   ├── semantic_layer_execution_plan.md      # Five-phase end-to-end technical roadmap
 │   ├── terraform_setup_and_authentication.md # Step-by-step 8-stage initialization runbook
-│   └── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
+│   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
+│   └── bigquery_setup_and_sample_data.md     # BigQuery architecture, DTS sample ingestion, & prod guide
 └── terraform/                                # Infrastructure as Code baseline
     ├── .gitignore                            # State and secret protections
     ├── versions.tf                           # Provider & Terraform engine constraints
@@ -63,6 +64,7 @@ cube-core-mcp/
     ├── terraform.tfvars.example              # Template local variables file
     ├── services.tf                           # Declarative workload API enablement & propagation timers
     ├── state_bucket.tf                       # GCS remote state bucket definition
+    ├── bigquery.tf                           # BigQuery datasets and cross-region Data Transfer config
     └── outputs.tf                            # Output values (project, state bucket, enabled APIs)
 ```
 
@@ -147,6 +149,7 @@ terraform plan -var-file=terraform.tfvars
   * **Phase 5:** Plug-and-Play Template Rollout (Cross-project IAM & parameterization).
 * [Terraform Setup & Authentication Guide](docs/terraform_setup_and_authentication.md) — Tooling installation, Application Default Credentials, race condition prevention, and provider settings.
 * [Terraform Service Account Bootstrap & IAM Strategy](docs/terraform_service_account_bootstrap.md) — Two-tier IAM architecture rationale and automated bootstrap script.
+* [BigQuery Architecture & Sample Data Guide](docs/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion via DTS, IAM resolution, and production transition steps.
 * [Official HashiCorp Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs) — Up-to-date provider documentation and resource specifications.
 
 ---

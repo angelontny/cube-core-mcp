@@ -77,9 +77,11 @@ echo "==> [4/5] Assigning baseline deployment IAM roles..."
 ROLES=(
   "roles/serviceusage.serviceUsageAdmin"        # Allows Terraform to enable APIs declaratively
   "roles/storage.admin"                       # Remote state bucket and Cube Store storage
+  "roles/bigquery.admin"                      # Managing BigQuery datasets, tables, and transfer configs
   "roles/compute.instanceAdmin.v1"            # Spot VM and Managed Instance Groups
   "roles/run.admin"                           # Cloud Run deployment
   "roles/compute.networkAdmin"                # VPC networking and Direct Egress
+  "roles/iam.serviceAccountAdmin"             # Creating & managing workload Service Accounts
   "roles/iam.serviceAccountUser"              # Attaching runtime SAs to Compute/Cloud Run
   "roles/resourcemanager.projectIamAdmin"     # Managing runtime SA role bindings
 )

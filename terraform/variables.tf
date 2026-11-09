@@ -25,12 +25,12 @@ variable "gcp_services" {
   type        = list(string)
   description = "List of GCP APIs to enable for Phase 1 infrastructure."
   default = [
+    "bigquery.googleapis.com",             # Google BigQuery
+    "bigquerydatatransfer.googleapis.com", # BigQuery Data Transfer Service
     "compute.googleapis.com",              # Spot VM & MIG
     "run.googleapis.com",                  # Cloud Run Services
     "storage.googleapis.com",              # GCS Buckets (Cube Store & State)
     "vpcaccess.googleapis.com",            # Direct VPC Egress / Serverless Connector
-    "iam.googleapis.com",                  # IAM Roles & Service Accounts
-    "cloudresourcemanager.googleapis.com", # Project metadata & IAM policy bindings
     "logging.googleapis.com",              # Cloud Logging sinks
   ]
 }
