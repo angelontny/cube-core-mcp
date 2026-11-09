@@ -1,0 +1,18 @@
+# Local state files
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Terraform plugin directory & lock file overrides
+.terraform/
+.terraform.lock.hcl.bak
+
+# Variable definitions containing project-specific or sensitive values
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Exclude credentials
+*.json
+!application_default_credentials.json.example

@@ -43,7 +43,7 @@ All commands must be executed from their respective root directories without byp
 ### Terraform Lifecycle (`cd terraform`)
 * **Format:** `terraform fmt -check` (inspect) or `terraform fmt` (apply format)
 * **Validate:** `terraform validate`
-* **Initialize:** `terraform init`
+* **Initialize:** `terraform init` (or `terraform init -backend-config="bucket=<PROJECT_ID>-tfstate"` for partial GCS backend)
 * **Plan:** `terraform plan -var-file=terraform.tfvars`
 * **Apply:** `terraform apply -var-file=terraform.tfvars`
 

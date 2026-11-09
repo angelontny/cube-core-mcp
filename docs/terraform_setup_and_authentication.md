@@ -274,24 +274,36 @@ terraform {
 
 ---
 
-#### 3. `terraform/backend.tf` (Two-Step Remote State Setup)
+#### 3. `terraform/backend.tf` (Two-Step Remote State Setup with Partial Backend Configuration)
 Terraform state tracks your managed infrastructure. In Google Cloud, state should be stored remotely in a versioned Cloud Storage (GCS) bucket rather than locally.
 
 > [!NOTE]
 > **The Chicken-and-Egg Bootstrap**:
 > You cannot store Terraform's state in a GCS bucket before that GCS bucket exists.
-> 1. **Initial Run:** Leave the `backend "gcs"` block commented out. Terraform will use a local `terraform.tfstate`.
-> 2. **After GCS Bucket Creation:** Uncomment the backend block and run `terraform init -migrate-state` to safely transfer the local state to the newly created bucket.
+> 1. **Initial Run:** Keep the backend configuration omitted or commented out. Terraform will use a local `terraform.tfstate`.
+> 2. **After GCS Bucket Creation:** Configure the backend and run `terraform init -migrate-state` to safely transfer the local state to the newly created bucket.
+
+> [!IMPORTANT]
+> **Why Variables Are Prohibited in `backend` Blocks**:
+> Terraform initializes the backend before evaluating any input variables, `*.tfvars` files, or resource attributes. Attempting to use `bucket = "${var.project_id}-tfstate"` will fail with:
+> `Error: Variables not allowed on backend.tf: Variables may not be used here.`
+>
+> To keep the repository environment-agnostic without hardcoding project IDs into version control, we use **Partial Backend Configuration**:
 
 ```hcl
-# Uncomment after creating the state bucket in Phase 1:
-# terraform {
-#   backend "gcs" {
-#     bucket = "cube-core-mcp-tfstate-<YOUR_PROJECT_ID>"
-#     prefix = "terraform/state"
-#   }
-# }
+terraform {
+  backend "gcs" {
+    prefix = "terraform/state"
+  }
+}
 ```
+
+##### Migrating State to GCS:
+Pass the dynamic bucket name via `-backend-config` during initialization:
+```bash
+terraform init -backend-config="bucket=<YOUR_GCP_PROJECT_ID>-tfstate" -migrate-state
+```
+When prompted to copy existing local state to the new backend, type `yes`. Terraform will migrate `terraform.tfstate` into `gs://<YOUR_GCP_PROJECT_ID>-tfstate/terraform/state/default.tfstate`.
 
 ---
 
