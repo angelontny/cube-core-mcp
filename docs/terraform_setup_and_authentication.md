@@ -1,19 +1,35 @@
-# Terraform Installation and GCP Authentication Guide
+# Terraform Setup, Authentication, and State Migration Runbook
 
-This guide details the official, Google-recommended procedure for installing Terraform, installing the Google Cloud CLI (`gcloud`), and configuring authentication for infrastructure deployment as outlined in [semantic_layer_execution_plan.md](file:///home/angelo/projects/cube-core-mcp/docs/semantic_layer_execution_plan.md).
-
-Related Documents & Official References:
-* [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md) — Automated script and IAM rationale for bootstrapping the Terraform Service Account.
-* [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs) — Official provider reference, argument registry, and resource specifications.
+This runbook provides the definitive, step-by-step procedure to initialize the Google Cloud infrastructure for `cube-core-mcp`. It covers project creation, billing configuration, service account bootstrapping with keyless Application Default Credentials (ADC) impersonation, initial local Terraform execution, GCS state bucket provisioning, and state migration.
 
 ---
 
-## 1. Prerequisites & Installation
+## Official Documentation References
 
-### A. Terraform Installation
-According to HashiCorp and Google Cloud documentation, Terraform should be installed via official binary releases or platform package managers.
+* **Google Cloud:**
+  * [Creating and Managing Projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
+  * [Modifying Project Billing Settings](https://cloud.google.com/billing/docs/how-to/modify-project)
+  * [Service Account Impersonation Guide](https://cloud.google.com/docs/authentication/use-service-account-impersonation)
+  * [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/provide-credentials-adc)
+  * [Service Usage API Overview](https://cloud.google.com/service-usage/docs/overview)
+* **HashiCorp Terraform:**
+  * [Terraform Google Provider Reference](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+  * [GCS Backend Configuration](https://developer.hashicorp.com/terraform/language/settings/backends/gcs)
+  * [Partial Backend Configuration](https://developer.hashicorp.com/terraform/language/backend#partial-configuration)
+  * [Backend State Migration](https://developer.hashicorp.com/terraform/language/backend#migrating-backends)
+* **Internal Documentation:**
+  * [semantic_layer_execution_plan.md](file:///home/angelo/projects/cube-core-mcp/docs/semantic_layer_execution_plan.md) — Architectural phases and milestone tracker.
+  * [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md) — Two-tier IAM design and security rationale.
+  * [bootstrap_terraform_sa.sh](file:///home/angelo/projects/cube-core-mcp/docs/bootstrap_terraform_sa.sh) — Shell bootstrap script.
 
-* **Arch Linux (Current Host):**
+---
+
+## Prerequisites: Tool Installation
+
+Install the required CLI binaries on your local workstation:
+
+### 1. HashiCorp Terraform (`>= 1.5.0`)
+* **Arch Linux:**
   ```bash
   sudo pacman -S terraform
   ```
@@ -22,31 +38,15 @@ According to HashiCorp and Google Cloud documentation, Terraform should be insta
   sudo apt-get update && sudo apt-get install -y gnupg software-properties-common curl
   curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
   echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  sudo apt-get update && sudo apt-get install terraform
+  sudo apt-get update && sudo apt-get install -y terraform
   ```
-* **macOS (Homebrew):**
+* **macOS:**
   ```bash
   brew tap hashicorp/tap
   brew install hashicorp/tap/terraform
   ```
 
-**Verify Installation:**
-```bash
-terraform -version
-```
-
----
-
-### B. Google Cloud CLI (`gcloud`) Installation
-The Google Cloud CLI manages authentication tokens and credentials required by Terraform.
-
-* **Linux Standalone Archive (Any Distro):**
-  ```bash
-  curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz
-  tar -xf google-cloud-cli-linux-x86_64.tar.gz
-  ./google-cloud-sdk/install.sh
-  ./google-cloud-sdk/bin/gcloud init
-  ```
+### 2. Google Cloud CLI (`gcloud`)
 * **Arch Linux (AUR):**
   ```bash
   yay -S google-cloud-cli
@@ -56,435 +56,271 @@ The Google Cloud CLI manages authentication tokens and credentials required by T
   sudo apt-get install apt-transport-https ca-certificates gnupg curl
   curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
   echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-  sudo apt-get update && sudo apt-get install google-cloud-cli
+  sudo apt-get update && sudo apt-get install -y google-cloud-cli
+  ```
+* **macOS:**
+  ```bash
+  brew install --cask google-cloud-sdk
   ```
 
-**Verify Installation:**
+Verify installed versions:
 ```bash
+terraform version
 gcloud version
 ```
 
 ---
 
-### C. Google Cloud Project & Billing Account Association (Mandatory)
-Every Google Cloud project requires an active Cloud Billing account linked before foundational APIs (such as `serviceusage.googleapis.com` or `compute.googleapis.com`) can be activated. If billing is omitted or unlinked, API enablement and Terraform resource queries will fail with `403 Forbidden` errors:
+## Step-by-Step Initialization Runbook
 
-> `googleapi: Error 403: Service Usage API has not been used in project ... before or it is disabled.`
-
-#### 1. Check Project Billing Status
-```bash
-gcloud billing projects describe <YOUR_GCP_PROJECT_ID>
 ```
-If billing is properly linked, the output will display:
-```yaml
-billingAccountName: billingAccounts/012345-6789AB-CDEF01
-billingEnabled: true
-name: projects/your-gcp-project-id/billingInfo
-projectId: your-gcp-project-id
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 1. Create GCP Project & Link Billing Account                                    │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 2. Clone Repository & Run Tier 0 SA Bootstrap Script                            │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 3. Authenticate Workstation ADC via SA Impersonation                            │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 4. Configure Local Environment Variables (terraform.tfvars)                    │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 5. Initialize Terraform Locally (backend.tf commented out)                      │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 6. Validate, Plan & Apply Initial Resources (Services + State Bucket)           │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 7. Enable Remote GCS Backend & Migrate State (terraform init -migrate-state)    │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+                                        ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 8. Verify State Synchronization (terraform plan -> "No changes")                │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-#### 2. Link a Billing Account (If `billingEnabled: false`)
-List available billing accounts associated with your Google identity:
-```bash
-gcloud billing accounts list
-```
-Link your billing account to the target project:
-```bash
-gcloud billing projects link <YOUR_GCP_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
-```
-Alternatively, link it directly in the web console:
-`https://console.cloud.google.com/billing/linkedaccount?project=<YOUR_GCP_PROJECT_ID>`
 
 ---
 
-## 2. Google Cloud Authentication via Application Default Credentials (ADC)
+### Step 1: Create GCP Project & Link Active Billing Account
 
-Google Cloud officially recommends using **Application Default Credentials (ADC)** for authenticating Terraform during local development.
+Every Google Cloud project requires an active Cloud Billing account linked before foundational APIs (`serviceusage.googleapis.com`, `compute.googleapis.com`) can be activated.
 
-> [!IMPORTANT]
-> `gcloud auth login` authenticates the `gcloud` CLI tool itself, but **does not** generate Application Default Credentials for client libraries and Terraform. You must run `gcloud auth application-default login`.
-
-### Step 1: Initialize User ADC
-Run the following command to authenticate your user account:
-```bash
-gcloud auth application-default login
-```
-* This command launches a browser window requesting Google account authorization.
-* Upon completion, credentials are saved locally at:
-  - Linux/macOS: `~/.config/gcloud/application_default_credentials.json`
-  - Windows: `%APPDATA%\gcloud\application_default_credentials.json`
-
-### Step 2: Set Quota Project (Crucial)
-Many Google Cloud APIs (such as Compute Engine, Cloud Run, and IAM) require a quota project when authenticating with end-user credentials. Failing to set this will lead to `PERMISSION_DENIED` errors on API requests.
-
-```bash
-gcloud auth application-default set-quota-project <YOUR_GCP_PROJECT_ID>
-```
-
-### Step 3: (Recommended Enterprise Pattern) Service Account Impersonation
-Google Cloud strongly discourages exporting static Service Account JSON keys to local workstations. Instead, developers can impersonate a dedicated Terraform service account using their user identity.
-
-> [!TIP]
-> To automatically create this service account and grant all required deployment roles via a 1-minute script, see [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md).
-
-1. Grant your user account the role `roles/iam.serviceAccountTokenCreator` on the target Terraform Service Account.
-2. Authenticate ADC via impersonation:
+1. Create the GCP Project:
    ```bash
-   gcloud auth application-default login --impersonate-service-account="terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
+   gcloud projects create <YOUR_GCP_PROJECT_ID> --name="Cube Core MCP"
+   ```
+
+2. List your available billing accounts:
+   ```bash
+   gcloud billing accounts list
+   ```
+
+3. Link the billing account to the project:
+   ```bash
+   gcloud billing projects link <YOUR_GCP_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
+   ```
+
+4. Verify billing status:
+   ```bash
+   gcloud billing projects describe <YOUR_GCP_PROJECT_ID> --format="value(billingEnabled)"
+   ```
+   *Expected output:* `True`
+
+---
+
+### Step 2: Clone Repository & Run Tier 0 SA Bootstrap Script
+
+The repository includes an automated bootstrap script ([bootstrap_terraform_sa.sh](file:///home/angelo/projects/cube-core-mcp/docs/bootstrap_terraform_sa.sh)) that enables foundational APIs, provisions the deployment Service Account, assigns least-privilege administrative IAM roles, and enables keyless user impersonation.
+
+1. Clone the repository to your local workstation:
+   ```bash
+   git clone <REPO_URL> cube-core-mcp
+   cd cube-core-mcp
+   ```
+
+2. Authenticate your user account in the `gcloud` CLI:
+   ```bash
+   gcloud auth login
+   ```
+
+3. Execute the bootstrap script:
+   ```bash
+   bash docs/bootstrap_terraform_sa.sh <YOUR_GCP_PROJECT_ID>
+   ```
+
+   The script executes five automated stages:
+   * **[1/5] Billing Verification:** Confirms billing is active on the project.
+   * **[2/5] API Activation:** Activates `serviceusage.googleapis.com`, `cloudresourcemanager.googleapis.com`, and `iam.googleapis.com`.
+   * **[3/5] Service Account Creation:** Provisions `terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com`.
+   * **[4/5] Role Assignment:** Assigns `serviceUsageAdmin`, `storage.admin`, `compute.instanceAdmin.v1`, `run.admin`, `compute.networkAdmin`, `iam.serviceAccountUser`, and `resourcemanager.projectIamAdmin`.
+   * **[5/5] Impersonation Binding:** Grants `roles/iam.serviceAccountTokenCreator` to your user account.
+
+---
+
+### Step 3: Authenticate Workstation ADC via SA Impersonation
+
+Configure your workstation to use Application Default Credentials (ADC) backed by temporary, short-lived tokens generated via Service Account impersonation. No static JSON service account keys are created or downloaded.
+
+1. Login to ADC with impersonation:
+   ```bash
+   gcloud auth application-default login \
+     --impersonate-service-account="terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
+   ```
+
+2. Configure quota project:
+   ```bash
+   gcloud auth application-default set-quota-project <YOUR_GCP_PROJECT_ID>
    ```
 
 ---
 
-## 3. Required GCP APIs and Permissions (Phase 1 Baseline)
+### Step 4: Configure Local Environment Variables (`terraform.tfvars`)
 
-You do **not** need to manually enable all GCP APIs via the console or CLI. Terraform can declare and enable them automatically using the `google_project_service` resource through your Terraform Service Account.
+Copy the committed template file and set your target project ID and deployment parameters:
 
-### A. The Minimum Prerequisites (One-Time Setup)
-For Terraform to manage and enable other APIs on the project, the authenticating identity (the Terraform Service Account) must have:
-1. **IAM Role:** `roles/serviceusage.serviceUsageAdmin` (enables and disables APIs).
-2. **Base API Enabled:** `serviceusage.googleapis.com` (enabled by default on all standard GCP projects; enables Terraform to communicate with GCP's Service Usage API).
-
-### B. Required IAM Roles for the Terraform Service Account
-The Terraform deployment Service Account requires baseline project-level roles (provisioned via [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md)):
-* `roles/serviceusage.serviceUsageAdmin` (to enable the APIs listed below automatically)
-* `roles/storage.admin` (for GCS backend state and Cube Store storage)
-* `roles/compute.instanceAdmin.v1` (for Spot VM & Managed Instance Groups)
-* `roles/run.admin` (for Cloud Run service deployments)
-* `roles/compute.networkAdmin` (for Direct VPC Egress / VPC setup)
-* `roles/iam.serviceAccountUser` (to attach runtime service accounts to Cloud Run & VMs)
-* `roles/resourcemanager.projectIamAdmin` (to manage runtime service account role bindings)
-
-### C. Enabling APIs Declaratively in Terraform (`google_project_service`)
-You can define the required APIs directly in Terraform. By setting `disable_on_destroy = false`, you prevent Terraform from accidentally disabling critical APIs if the resource configuration is modified or destroyed:
-
-```hcl
-locals {
-  # Foundational APIs (serviceusage, cloudresourcemanager, iam) are activated
-  # during Tier 0 bootstrap. Terraform manages workload infrastructure APIs:
-  required_services = [
-    "compute.googleapis.com",   # Spot VM / Compute Engine
-    "run.googleapis.com",       # Cloud Run (Cube Core API & FastMCP)
-    "storage.googleapis.com",   # GCS Bucket for Cube Store
-    "vpcaccess.googleapis.com", # Serverless VPC Access / Direct VPC Egress
-    "logging.googleapis.com",   # Cloud Logging sinks
-  ]
-}
-
-resource "google_project_service" "enabled_services" {
-  for_each = toset(local.required_services)
-
-  project            = var.project_id
-  service            = each.value
-  disable_on_destroy = false
-}
-```
-
-> [!TIP]
-> If you prefer running a quick CLI command before your first `terraform apply` instead of declaring `google_project_service`, you can optionally run:
-> ```bash
-> gcloud services enable \
->   compute.googleapis.com \
->   run.googleapis.com \
->   storage.googleapis.com \
->   vpcaccess.googleapis.com \
->   iam.googleapis.com \
->   cloudresourcemanager.googleapis.com \
->   logging.googleapis.com \
->   --project=<YOUR_GCP_PROJECT_ID>
-> ```
-
----
-
-## 4. Standard Terraform Project Structure & Configuration
-
-In production environments and Google Cloud enterprise architectures, Terraform code is structured into modular, single-responsibility files rather than a single monolithic script.
-
-### A. Recommended Directory Layout
-For this repository, place your Terraform configurations in a dedicated `terraform/` directory:
-
-```text
-cube-core-mcp/
-├── docs/
-│   ├── semantic_layer_execution_plan.md
-│   └── terraform_setup_and_authentication.md
-└── terraform/
-    ├── .gitignore
-    ├── versions.tf          # Terraform engine & provider version constraints
-    ├── backend.tf           # Remote state storage configuration (GCS)
-    ├── providers.tf         # Google & helper provider definitions
-    ├── variables.tf         # Input variable declarations, types, and descriptions
-    ├── terraform.tfvars     # Local environment variable values (ignored by git)
-    ├── terraform.tfvars.example # Template variable values committed to git
-    ├── services.tf          # Declarative GCP API enablement & propagation timers
-    ├── outputs.tf           # Exported values (project ID, enabled APIs, etc.)
-    └── (Phase 1 files)
-        ├── networking.tf    # VPC & Direct Egress
-        ├── storage.tf       # GCS bucket for Cube Store
-        ├── compute.tf       # Spot VM & Managed Instance Group
-        └── cloud_run.tf     # Cloud Run services (Cube Core API & FastMCP)
-```
-
----
-
-### B. Standard File Specifications
-
-#### 1. `terraform/.gitignore`
-Ensures local state, sensitive secrets, and plugin caches are never committed to version control:
-```gitignore
-# Local state files
-*.tfstate
-*.tfstate.*
-crash.log
-crash.*.log
-
-# Terraform plugin directory & lock file overrides
-.terraform/
-.terraform.lock.hcl.bak
-
-# Variable definitions containing project-specific or sensitive values
-terraform.tfvars
-*.auto.tfvars
-*.auto.tfvars.json
-
-# Exclude secrets
-*.json
-!application_default_credentials.json.example
-```
-
----
-
-#### 2. `terraform/versions.tf`
-Specifies required Terraform core version and provider plugins:
-```hcl
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.30"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.11"
-    }
-  }
-}
-```
-
----
-
-#### 3. `terraform/backend.tf` (Two-Step Remote State Setup with Partial Backend Configuration)
-Terraform state tracks your managed infrastructure. In Google Cloud, state should be stored remotely in a versioned Cloud Storage (GCS) bucket rather than locally.
-
-> [!NOTE]
-> **The Chicken-and-Egg Bootstrap**:
-> You cannot store Terraform's state in a GCS bucket before that GCS bucket exists.
-> 1. **Initial Run:** Keep the backend configuration omitted or commented out. Terraform will use a local `terraform.tfstate`.
-> 2. **After GCS Bucket Creation:** Configure the backend and run `terraform init -migrate-state` to safely transfer the local state to the newly created bucket.
-
-> [!IMPORTANT]
-> **Why Variables Are Prohibited in `backend` Blocks**:
-> Terraform initializes the backend before evaluating any input variables, `*.tfvars` files, or resource attributes. Attempting to use `bucket = "${var.project_id}-tfstate"` will fail with:
-> `Error: Variables not allowed on backend.tf: Variables may not be used here.`
->
-> To keep the repository environment-agnostic without hardcoding project IDs into version control, we use **Partial Backend Configuration**:
-
-```hcl
-terraform {
-  backend "gcs" {
-    prefix = "terraform/state"
-  }
-}
-```
-
-##### Migrating State to GCS:
-Pass the dynamic bucket name via `-backend-config` during initialization:
-```bash
-terraform init -backend-config="bucket=<YOUR_GCP_PROJECT_ID>-tfstate" -migrate-state
-```
-When prompted to copy existing local state to the new backend, type `yes`. Terraform will migrate `terraform.tfstate` into `gs://<YOUR_GCP_PROJECT_ID>-tfstate/terraform/state/default.tfstate`.
-
----
-
-#### 4. `terraform/providers.tf`
-Configures the Google Cloud provider (see [Google Provider Docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs)). Do **not** hardcode credentials paths or credentials files; Terraform discovers your local ADC automatically.
-
-```hcl
-provider "google" {
-  project = var.project_id
-  region  = var.region
-  zone    = var.zone
-
-  # Note: The Google provider automatically injects the attribution label
-  # `goog-terraform-provisioned = "true"` on all supported resources.
-  default_labels = {
-    environment = var.environment
-    project     = "cube-core-mcp"
-  }
-}
-```
-
----
-
-#### 5. `terraform/variables.tf`
-Defines all input variables with explicit types, validations, and descriptive documentation:
-
-```hcl
-variable "project_id" {
-  type        = string
-  description = "The GCP Project ID where resources will be provisioned."
-}
-
-variable "region" {
-  type        = string
-  description = "The primary GCP region for regional resources (Cloud Run, GCS)."
-  default     = "us-central1"
-}
-
-variable "zone" {
-  type        = string
-  description = "The GCP zone for zonal resources (Spot VM)."
-  default     = "us-central1-a"
-}
-
-variable "environment" {
-  type        = string
-  description = "Deployment environment name (dev, staging, prod)."
-  default     = "dev"
-}
-
-variable "gcp_services" {
-  type        = list(string)
-  description = "List of GCP APIs to enable for Phase 1 infrastructure."
-  default = [
-    "compute.googleapis.com",   # Spot VM & MIG
-    "run.googleapis.com",       # Cloud Run Services
-    "storage.googleapis.com",   # GCS Buckets (Cube Store & State)
-    "vpcaccess.googleapis.com", # Direct VPC Egress / Serverless Connector
-    "logging.googleapis.com",   # Cloud Logging sinks
-  ]
-}
-```
-
----
-
-#### 6. `terraform/terraform.tfvars.example` and `terraform.tfvars`
-Create a template file `terraform.tfvars.example` to commit to Git:
-```hcl
-project_id  = "your-gcp-project-id"
-region      = "us-central1"
-zone        = "us-central1-a"
-environment = "dev"
-```
-Copy it locally to `terraform.tfvars` and substitute your actual GCP Project ID:
-```bash
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-```
-
----
-
-## 5. Declarative Service Enablement (`services.tf`)
-
-Enabling GCP APIs via Terraform requires understanding **Google Cloud API propagation delays**:
-
-### The API Propagation Race Condition
-When Google Cloud enables an API via the Service Usage API, it immediately returns `200 OK`. However, internal IAM propagation and control plane activation across Google data centers can take anywhere from **30 to 90 seconds**.
-
-If dependent resources (e.g., creating a VPC or a Spot VM) execute immediately after the API call returns, they can fail with:
-```text
-Error 403: Compute Engine API has not been used in project ... before or it is disabled.
-```
-
-### The Solution: `services.tf` with `time_sleep`
-To eliminate race conditions, standard practice utilizes the `hashicorp/time` provider to create an explicit 45-second sleep window after services are enabled before downstream resources start creating.
-
-```hcl
-# Enable the required APIs declaratively
-resource "google_project_service" "enabled_services" {
-  for_each = toset(var.gcp_services)
-
-  project            = var.project_id
-  service            = each.value
-  disable_on_destroy = false
-}
-
-# Explicit wait buffer to allow Google's control plane to propagate
-resource "time_sleep" "wait_for_services" {
-  depends_on = [google_project_service.enabled_services]
-
-  create_duration = "45s"
-}
-```
-
-### How Subsequent Phase 1 Files Consume This Dependency
-Whenever you create resources in later files (`networking.tf`, `compute.tf`, `storage.tf`, `cloud_run.tf`), ensure they explicitly depend on `time_sleep.wait_for_services`:
-
-```hcl
-# Example in storage.tf
-resource "google_storage_bucket" "cube_store" {
-  name     = "${var.project_id}-cube-store-data"
-  location = var.region
-
-  # Guarantees the storage API is enabled and fully active before bucket creation starts
-  depends_on = [time_sleep.wait_for_services]
-}
-```
-
----
-
-#### 7. `terraform/outputs.tf`
-Outputs confirm the active environment configuration:
-
-```hcl
-output "project_id" {
-  description = "The GCP Project ID."
-  value       = var.project_id
-}
-
-output "enabled_services" {
-  description = "List of services enabled by Terraform."
-  value       = keys(google_project_service.enabled_services)
-}
-```
-
----
-
-## 6. Execution Workflow & Step-by-Step Initialization
-
-Follow this standard lifecycle workflow to initialize and apply the configuration:
-
-### Step 1: Format and Validate
-Always format and validate syntax before planning:
 ```bash
 cd terraform/
-terraform fmt
-terraform validate
+cp terraform.tfvars.example terraform.tfvars
 ```
 
-### Step 2: Initialize
-Downloads provider plugins (`google`, `time`) and sets up local working state:
-```bash
-terraform init
+Edit `terraform.tfvars`:
+```hcl
+project_id  = "<YOUR_GCP_PROJECT_ID>"
+region      = "asia-south1"      # or "us-central1"
+zone        = "asia-south1-c"    # or "us-central1-a"
+environment = "dev"
 ```
 
-### Step 3: Run Execution Plan
-Inspect the exact changes Terraform intends to make without applying them:
-```bash
-terraform plan
-```
-Verify that the output shows `7 to add, 0 to change, 0 to destroy` (corresponding to the enabled services and the `time_sleep` resource).
+> [!NOTE]
+> `terraform.tfvars` contains deployment-specific identifiers and is explicitly ignored in [terraform/.gitignore](file:///home/angelo/projects/cube-core-mcp/terraform/.gitignore).
 
-### Step 4: Apply API Services
-Apply the changes:
-```bash
-terraform apply
-```
-Type `yes` when prompted. Terraform will enable the APIs, pause for 45 seconds for propagation, and confirm success.
+---
 
-### Step 5: Verification
-You can inspect the newly enabled services using `gcloud`:
+### Step 5: Initialize Terraform with Local Backend (Initial Bootstrap)
+
+Because the Cloud Storage bucket for remote state does not yet exist, Terraform must perform its very first run using local state.
+
+1. Ensure the `backend "gcs"` block in [`terraform/backend.tf`](file:///home/angelo/projects/cube-core-mcp/terraform/backend.tf) is **commented out**:
+   ```hcl
+   # terraform {
+   #   backend "gcs" {
+   #     prefix = "terraform/state"
+   #   }
+   # }
+   ```
+
+2. Initialize Terraform locally:
+   ```bash
+   terraform init
+   ```
+   *Expected output:* `Terraform has been successfully initialized!`
+
+---
+
+### Step 6: Validate, Plan, and Apply Initial Configuration
+
+This step activates workload APIs declaratively and provisions the versioned Cloud Storage state bucket ([state_bucket.tf](file:///home/angelo/projects/cube-core-mcp/terraform/state_bucket.tf)).
+
+1. Check code formatting:
+   ```bash
+   terraform fmt -check
+   ```
+
+2. Validate syntax and provider schemas:
+   ```bash
+   terraform validate
+   ```
+
+3. Review the execution plan:
+   ```bash
+   terraform plan -var-file=terraform.tfvars
+   ```
+   *Plan summary:* 7 resources to add (5 `google_project_service` APIs, 1 `time_sleep.wait_for_services`, 1 `google_storage_bucket.terraform_state`).
+
+4. Provision the initial resources:
+   ```bash
+   terraform apply -var-file=terraform.tfvars
+   ```
+   Type `yes` when prompted. Terraform enables the APIs, pauses 45–90 seconds for propagation, and provisions the bucket `<YOUR_GCP_PROJECT_ID>-tfstate`.
+
+---
+
+### Step 7: Enable Remote GCS Backend & Migrate State
+
+Once the bucket is provisioned in Google Cloud Storage, configure Terraform to store state remotely using **Partial Backend Configuration**.
+
+1. Uncomment the backend block in [`terraform/backend.tf`](file:///home/angelo/projects/cube-core-mcp/terraform/backend.tf):
+   ```hcl
+   terraform {
+     backend "gcs" {
+       prefix = "terraform/state"
+     }
+   }
+   ```
+
+2. Migrate local state into GCS by passing the bucket dynamically:
+   ```bash
+   terraform init -backend-config="bucket=<YOUR_GCP_PROJECT_ID>-tfstate" -migrate-state
+   ```
+
+3. When prompted:
+   ```text
+   Do you want to copy existing state to the new backend?
+     Pre-existing state was found while migrating the previous "local" backend to the
+     newly configured "gcs" backend...
+     Enter a value: yes
+   ```
+   Type `yes` and press Enter.
+
+Terraform will upload the local `terraform.tfstate` into `gs://<YOUR_GCP_PROJECT_ID>-tfstate/terraform/state/default.tfstate`.
+
+---
+
+### Step 8: Verify Remote State Synchronization
+
+Confirm that Terraform is reading from the remote backend and that the live infrastructure matches your configuration:
+
 ```bash
-gcloud services list --enabled --project=<YOUR_GCP_PROJECT_ID>
+terraform plan -var-file=terraform.tfvars
 ```
-At this point, the baseline environment and authentication are fully operational, and you are ready to write Phase 1 infrastructure resources (Storage, Spot VM, Cloud Run, Networking).
+
+*Expected output:*
+```text
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration and
+found no differences, so no changes are needed.
+```
+
+The foundational infrastructure is now fully provisioned and secured with remote state locking. Subsequent Phase 1 modules ([networking.tf](file:///home/angelo/projects/cube-core-mcp/terraform/services.tf), `storage.tf`, `compute.tf`, `cloud_run.tf`) can now be implemented.
+
+---
+
+## Architectural Notes & FAQ
+
+### Why Partial Backend Configuration?
+Terraform initializes its backend before variable interpolation or `.tfvars` parsing takes place. Specifying `bucket = "${var.project_id}-tfstate"` inside `backend.tf` produces:
+```text
+Error: Variables not allowed on backend.tf line 3: Variables may not be used here.
+```
+By declaring only `prefix = "terraform/state"` in `backend.tf` and passing `-backend-config="bucket=..."` at `terraform init`, the repository stays 100% environment-agnostic without hardcoding sensitive or project-specific bucket names.
+
+### Why Are Foundational APIs Separate From Workload APIs?
+* `serviceusage.googleapis.com`, `cloudresourcemanager.googleapis.com`, and `iam.googleapis.com` are managed by the Tier 0 bootstrap script.
+* Workload APIs (`compute`, `run`, `storage`, `vpcaccess`, `logging`) are managed declaratively in [`services.tf`](file:///home/angelo/projects/cube-core-mcp/terraform/services.tf).
+* This protects the project from destructive deadlocks during `terraform destroy`, ensuring deployment credentials and API management capabilities remain intact across teardowns.
