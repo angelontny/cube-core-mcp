@@ -17,23 +17,25 @@ The repository strictly isolates infrastructure automation, application services
 ```text
 cube-core-mcp/
 ├── docs/                                  # Architectural specifications and runbooks
+│   ├── bootstrap_terraform_sa.sh          # Automated Tier 0 SA bootstrap script
 │   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
-│   ├── terraform_setup_and_authentication.md # Workstation setup, ADC, and lifecycle flow
-│   └── terraform_service_account_bootstrap.md # Tier 0 admin bootstrap script and IAM model
+│   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
+│   └── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
 ├── terraform/                             # Declarative cloud infrastructure
 │   ├── versions.tf                        # Engine, Terraform, and provider version pins
-│   ├── backend.tf                         # Remote state storage configuration (GCS)
+│   ├── backend.tf                         # Partial GCS remote state configuration (prefix only)
 │   ├── providers.tf                       # GCP provider definition with common labels
-│   ├── variables.tf                       # Strongly typed input variables and validation
+│   ├── variables.tf                       # Strongly typed input variables and workload API definitions
 │   ├── terraform.tfvars.example           # Committed template for environment variables
-│   ├── services.tf                        # Declarative API enablement and propagation timers
+│   ├── services.tf                        # Declarative workload API enablement and propagation timers
+│   ├── state_bucket.tf                    # GCS remote state bucket definition
 │   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
 │   └── (Phase 1 planned modules)          # networking.tf, storage.tf, compute.tf, cloud_run.tf
 ├── src/                                   # Application code (Phases 2-4)
 │   ├── cube/                              # Cube Core Dockerfile, schema definitions, dbt parsers
 │   ├── fastmcp/                           # Python FastMCP service, OAuth middleware, formatters
 │   └── bridge/                            # Local stdio-to-SSE proxy bridge with OS keychain integration
-├── README.md                              # Repository overview and setup guide
+├── README.md                              # Repository overview and quickstart guide
 └── AGENT.md                               # AI agent system prompt and operating parameters
 ```
 
@@ -43,7 +45,8 @@ All commands must be executed from their respective root directories without byp
 ### Terraform Lifecycle (`cd terraform`)
 * **Format:** `terraform fmt -check` (inspect) or `terraform fmt` (apply format)
 * **Validate:** `terraform validate`
-* **Initialize:** `terraform init` (or `terraform init -backend-config="bucket=<PROJECT_ID>-tfstate"` for partial GCS backend)
+* **Initialize:** `terraform init` (local state) or `terraform init -backend-config="bucket=<PROJECT_ID>-tfstate"` (partial GCS backend)
+* **Migrate State:** `terraform init -backend-config="bucket=<PROJECT_ID>-tfstate" -migrate-state`
 * **Plan:** `terraform plan -var-file=terraform.tfvars`
 * **Apply:** `terraform apply -var-file=terraform.tfvars`
 
@@ -64,6 +67,8 @@ All commands must be executed from their respective root directories without byp
 3. **API Propagation Guards:** All infrastructure resources that depend on newly activated GCP services must declare an explicit dependency on `time_sleep.wait_for_services` to prevent Google Cloud control-plane race conditions.
 4. **Type Strictness:** All Python code must use strict type hints validated by `mypy`. All Terraform variables must declare explicit `type`, `description`, and appropriate default or validation rules.
 5. **Payload Optimization:** FastMCP query responses delivered to LLM callers must compress verbose JSON payloads into token-efficient Markdown tables or dense CSV strings. Never pipe raw tabular payloads without contextual reduction.
+6. **Partial Backend Configuration:** Never interpolate variables or hardcode project-specific bucket names into `backend "gcs"` blocks (Terraform strictly prohibits variable interpolation in backend blocks). Declare only `prefix = "terraform/state"` in `backend.tf` and pass `-backend-config="bucket=..."` dynamically during initialization.
+7. **Tier 0 vs Tier 1 API Separation:** Foundational APIs (`serviceusage`, `cloudresourcemanager`, `iam`) are managed strictly by the Tier 0 bootstrap script. Terraform exclusively manages workload APIs (`compute`, `run`, `storage`, `vpcaccess`, `logging`) in `services.tf`.
 
 ## 6. Judgment Boundaries
 
