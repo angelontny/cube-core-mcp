@@ -1,0 +1,87 @@
+# System Instructions for AI Coding Agents
+
+## 1. Mission
+`cube-core-mcp` is a serverless, cross-cloud semantic layer designed to bridge enterprise data warehouses (Google BigQuery) with LLM client interfaces (Claude Code, Claude Desktop) via the Model Context Protocol (MCP). The architecture couples a containerized Cube Core semantic engine (hydrated with dbt `manifest.json` metadata) and a custom FastMCP Python translation service on Google Cloud Run, supported by an out-of-process Cube Store cache node running on Compute Engine Spot VMs backed by Cloud Storage Parquet persistence.
+
+## 2. Tech Stack
+* **Infrastructure as Code:** HashiCorp Terraform (`>= 1.5.0`), Google Provider (`~> 5.30`), Time Provider (`~> 0.11`)
+* **Cloud Platform:** Google Cloud Platform (Cloud Run v2, Compute Engine Spot MIG, Google Cloud Storage, Serverless VPC Direct Egress, Cloud Logging, IAM)
+* **Application & Semantic Engine:** Cube Core (Docker/Node runtime), Cube Store Standalone (Rust-based storage engine)
+* **MCP Service Layer:** Python (`>= 3.11`), FastMCP SDK, `uv` package manager
+* **Upstream Data Layer:** dbt Core/Cloud (`manifest.json` semantic schema), Google BigQuery
+* **Security & Protocols:** OAuth 2.1 (Google Workspace Bearer tokens), Server-Sent Events (SSE), stdio local bridge
+
+## 3. Architecture & Directory Structure
+The repository strictly isolates infrastructure automation, application services, and documentation:
+
+```text
+cube-core-mcp/
+├── docs/                                  # Architectural specifications and runbooks
+│   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
+│   ├── terraform_setup_and_authentication.md # Workstation setup, ADC, and lifecycle flow
+│   └── terraform_service_account_bootstrap.md # Tier 0 admin bootstrap script and IAM model
+├── terraform/                             # Declarative cloud infrastructure
+│   ├── versions.tf                        # Engine, Terraform, and provider version pins
+│   ├── backend.tf                         # Remote state storage configuration (GCS)
+│   ├── providers.tf                       # GCP provider definition with common labels
+│   ├── variables.tf                       # Strongly typed input variables and validation
+│   ├── terraform.tfvars.example           # Committed template for environment variables
+│   ├── services.tf                        # Declarative API enablement and propagation timers
+│   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
+│   └── (Phase 1 planned modules)          # networking.tf, storage.tf, compute.tf, cloud_run.tf
+├── src/                                   # Application code (Phases 2-4)
+│   ├── cube/                              # Cube Core Dockerfile, schema definitions, dbt parsers
+│   ├── fastmcp/                           # Python FastMCP service, OAuth middleware, formatters
+│   └── bridge/                            # Local stdio-to-SSE proxy bridge with OS keychain integration
+├── README.md                              # Repository overview and setup guide
+└── AGENT.md                               # AI agent system prompt and operating parameters
+```
+
+## 4. Toolchain & Execution
+All commands must be executed from their respective root directories without bypass flags.
+
+### Terraform Lifecycle (`cd terraform`)
+* **Format:** `terraform fmt -check` (inspect) or `terraform fmt` (apply format)
+* **Validate:** `terraform validate`
+* **Initialize:** `terraform init`
+* **Plan:** `terraform plan -var-file=terraform.tfvars`
+* **Apply:** `terraform apply -var-file=terraform.tfvars`
+
+### FastMCP Python Service (`cd src/fastmcp` once initialized)
+* **Dependency Sync:** `uv sync`
+* **Local Development Server:** `uv run python -m fastmcp.server --dev`
+* **Linting & Formatting:** `uv run ruff check .` and `uv run ruff format --check .`
+* **Type Checking:** `uv run mypy .`
+* **Unit & Integration Tests:** `uv run pytest tests/`
+
+### Cube Core Container (`cd src/cube` once initialized)
+* **Build Image:** `docker build -t cube-core:latest .`
+* **Run Local Verification:** `docker run --rm -p 4000:4000 --env-file .env cube-core:latest`
+
+## 5. Coding Conventions
+1. **Style and Tone (Strict Emoji Ban):** Never include emojis in documentation, code comments, commit messages, or terminal outputs. Maintain an objective, professional, and concise technical tone at all times.
+2. **Infrastructure Idempotency:** In Terraform, always set `disable_on_destroy = false` on `google_project_service`. Never manage the Terraform deployment Service Account's own foundational IAM roles within Terraform code.
+3. **API Propagation Guards:** All infrastructure resources that depend on newly activated GCP services must declare an explicit dependency on `time_sleep.wait_for_services` to prevent Google Cloud control-plane race conditions.
+4. **Type Strictness:** All Python code must use strict type hints validated by `mypy`. All Terraform variables must declare explicit `type`, `description`, and appropriate default or validation rules.
+5. **Payload Optimization:** FastMCP query responses delivered to LLM callers must compress verbose JSON payloads into token-efficient Markdown tables or dense CSV strings. Never pipe raw tabular payloads without contextual reduction.
+
+## 6. Judgment Boundaries
+
+* **ALWAYS:**
+  * Use Application Default Credentials (ADC) and Service Account impersonation (`--impersonate-service-account`); never generate or accept static Service Account JSON keys.
+  * Run `terraform fmt` and `terraform validate` before proposing infrastructure changes.
+  * Preserve existing comments, docstrings, and documentation integrity when modifying files.
+  * Keep `.gitignore` updated to guarantee zero accidental leakage of `.tfstate`, `*.tfvars`, or credentials.
+
+* **ASK:**
+  * Ask before executing any command that provisions billable cloud infrastructure (`terraform apply`).
+  * Ask before running any destructive command (`terraform destroy`, deleting storage buckets, tearing down VPCs).
+  * Ask before altering IAM role bindings on external projects (e.g., cross-project BigQuery access).
+  * Ask before upgrading major provider or runtime engine versions.
+
+* **NEVER:**
+  * Never commit secrets, OAuth client secrets, API tokens, service account keys, or internal network IPs to version control.
+  * Never execute `git commit` or `git push` unless explicitly ordered by the user.
+  * Never use emojis anywhere in markdown documentation or codebases.
+  * Never hardcode GCP credentials paths or static tokens inside Terraform provider blocks.
+  * Never use authoritative IAM resources (`google_project_iam_binding`) that can overwrite project-level permissions; use additive resources (`google_project_iam_member`) exclusively.

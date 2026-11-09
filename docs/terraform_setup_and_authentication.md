@@ -2,8 +2,9 @@
 
 This guide details the official, Google-recommended procedure for installing Terraform, installing the Google Cloud CLI (`gcloud`), and configuring authentication for infrastructure deployment as outlined in [semantic_layer_execution_plan.md](file:///home/angelo/projects/cube-core-mcp/docs/semantic_layer_execution_plan.md).
 
-Related Documents:
+Related Documents & Official References:
 * [terraform_service_account_bootstrap.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_service_account_bootstrap.md) — Automated script and IAM rationale for bootstrapping the Terraform Service Account.
+* [Terraform Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs) — Official provider reference, argument registry, and resource specifications.
 
 ---
 
@@ -264,7 +265,7 @@ Terraform state tracks your managed infrastructure. In Google Cloud, state shoul
 ---
 
 #### 4. `terraform/providers.tf`
-Configures the Google Cloud provider. Do **not** hardcode credentials paths or credentials files; Terraform discovers your local ADC automatically.
+Configures the Google Cloud provider (see [Google Provider Docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs)). Do **not** hardcode credentials paths or credentials files; Terraform discovers your local ADC automatically.
 
 ```hcl
 provider "google" {
@@ -272,10 +273,10 @@ provider "google" {
   region  = var.region
   zone    = var.zone
 
-  # Optional default labels applied to all GCP resources supporting labels
+  # Note: The Google provider automatically injects the attribution label
+  # `goog-terraform-provisioned = "true"` on all supported resources.
   default_labels = {
     environment = var.environment
-    managed_by  = "terraform"
     project     = "cube-core-mcp"
   }
 }
