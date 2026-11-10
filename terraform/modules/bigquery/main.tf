@@ -41,7 +41,6 @@ resource "google_bigquery_dataset" "thelook_ecommerce" {
 
   labels = {
     environment = var.environment
-    managed_by  = "terraform"
     source_data = "thelook-ecommerce"
   }
 
@@ -59,7 +58,6 @@ resource "google_bigquery_dataset" "analytics" {
 
   labels = {
     environment = var.environment
-    managed_by  = "terraform"
   }
 
   delete_contents_on_destroy = var.environment == "dev" ? true : false

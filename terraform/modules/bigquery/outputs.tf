@@ -12,3 +12,8 @@ output "bq_transfer_service_account_email" {
   description = "Email of the service account used for BigQuery Data Transfer."
   value       = google_service_account.bq_transfer.email
 }
+
+output "transfer_config_id" {
+  description = "The resource name of the cross-region dataset transfer config."
+  value       = google_bigquery_data_transfer_config.thelook_cross_region_copy.name
+}

@@ -80,6 +80,7 @@ All commands must be executed from their respective root directories without byp
 5. **Payload Optimization:** FastMCP query responses delivered to LLM callers must compress verbose JSON payloads into token-efficient Markdown tables or dense CSV strings. Never pipe raw tabular payloads without contextual reduction.
 6. **Partial Backend Configuration:** Never interpolate variables or hardcode project-specific bucket names into `backend "gcs"` blocks (Terraform strictly prohibits variable interpolation in backend blocks). Declare only `prefix = "terraform/state"` in `backend.tf` and pass `-backend-config="bucket=..."` dynamically during initialization.
 7. **Tier 0 vs Tier 1 API Separation:** Foundational APIs (`serviceusage`, `cloudresourcemanager`, `iam`) are managed strictly by the Tier 0 bootstrap script. Terraform exclusively manages workload APIs (`compute`, `run`, `storage`, `vpcaccess`, `logging`) in `services.tf`.
+8. **No `managed_by = "terraform"` Labels:** Never add `managed_by = "terraform"` or similar IaC attribution labels to resource configurations. The Google provider automatically tracks attribution. Keep resource labels strictly domain- and environment-oriented (e.g. `environment`, `purpose`).
 
 ## 6. Judgment Boundaries
 

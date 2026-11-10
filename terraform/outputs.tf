@@ -23,7 +23,22 @@ output "bigquery_analytics_dataset_id" {
   value       = module.bigquery.analytics_dataset_id
 }
 
+output "bigquery_transfer_config_id" {
+  description = "The resource name of the cross-region dataset transfer config."
+  value       = module.bigquery.transfer_config_id
+}
+
 output "bigquery_transfer_service_account" {
   description = "The email of the BigQuery Data Transfer service account."
   value       = module.bigquery.bq_transfer_service_account_email
+}
+
+output "cube_store_cache_bucket" {
+  description = "The GCS bucket name for Cube Store Parquet cache files."
+  value       = module.storage.bucket_name
+}
+
+output "cube_store_service_account_email" {
+  description = "The email address of the dedicated Cube Store service account."
+  value       = module.storage.service_account_email
 }
