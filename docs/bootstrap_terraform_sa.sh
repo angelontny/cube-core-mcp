@@ -81,6 +81,7 @@ ROLES=(
   "roles/compute.instanceAdmin.v1"            # Spot VM and Managed Instance Groups
   "roles/run.admin"                           # Cloud Run deployment
   "roles/compute.networkAdmin"                # VPC networking and Direct Egress
+  "roles/compute.securityAdmin"               # Managing VPC firewall rules (compute.firewalls.create)
   "roles/iam.serviceAccountAdmin"             # Creating & managing workload Service Accounts
   "roles/iam.serviceAccountUser"              # Attaching runtime SAs to Compute/Cloud Run
   "roles/resourcemanager.projectIamAdmin"     # Managing runtime SA role bindings
