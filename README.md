@@ -51,6 +51,7 @@ cube-core-mcp/
 ├── AGENT.md                                  # AI agent system prompt and operating parameters
 ├── docs/
 │   ├── bootstrap_terraform_sa.sh             # Automated Tier 0 SA bootstrap script
+│   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core engine architecture, GCP mappings, & query lifecycle
 │   ├── semantic_layer_execution_plan.md      # Five-phase end-to-end technical roadmap
 │   ├── terraform_setup_and_authentication.md # Step-by-step 8-stage initialization runbook
 │   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
@@ -143,6 +144,9 @@ terraform plan -var-file=terraform.tfvars
 
 ## Documentation Reference Index
 
+* [Cube Core Architecture & GCP Mapping](docs/cube_core_architecture_and_gcp_mapping.md) — Technical breakdown of Cube Core components, GCP resource instantiation, and the end-to-end query evaluation lifecycle.
+* [Cube Core & FastMCP Implementation Plan](docs/cube_core_implementation_plan.md) — Step-by-step 5-tier technical runbook from storage and networking to semantic engine and FastMCP.
+* [Terraform Modularization & State Migration](docs/terraform_modularization_and_state_migration.md) — Architectural rationale, directory refactoring, and zero-downtime state pointer migration runbook.
 * [Semantic Layer Execution Plan](docs/semantic_layer_execution_plan.md) — Comprehensive plan covering:
   * **Phase 1:** Infrastructure as Code (GCS, Spot VM, Cloud Run, VPC Direct Egress).
   * **Phase 2:** Semantic Engine & CI/CD (dbt manifest ingestion & container builds).

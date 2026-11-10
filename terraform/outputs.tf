@@ -15,15 +15,15 @@ output "terraform_state_bucket" {
 
 output "bigquery_raw_dataset_id" {
   description = "The BigQuery dataset ID for raw replicated data."
-  value       = google_bigquery_dataset.thelook_ecommerce.dataset_id
+  value       = module.bigquery.thelook_ecommerce_dataset_id
 }
 
 output "bigquery_analytics_dataset_id" {
   description = "The BigQuery dataset ID for dbt analytics marts."
-  value       = google_bigquery_dataset.analytics.dataset_id
+  value       = module.bigquery.analytics_dataset_id
 }
 
-output "bigquery_transfer_config_id" {
-  description = "The resource name of the cross-region dataset transfer config."
-  value       = google_bigquery_data_transfer_config.thelook_cross_region_copy.name
+output "bigquery_transfer_service_account" {
+  description = "The email of the BigQuery Data Transfer service account."
+  value       = module.bigquery.bq_transfer_service_account_email
 }

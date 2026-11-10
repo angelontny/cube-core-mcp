@@ -1,9 +1,5 @@
 # ------------------------------------------------------------------------------
-# BigQuery Datasets & Cross-Region Data Transfer
-# ------------------------------------------------------------------------------
-# Provisions the raw replicated dataset and analytics marts dataset in the
-# deployment region (var.region), hydrated from bigquery-public-data via
-# BigQuery Data Transfer Service (cross_region_copy).
+# BigQuery Module: Datasets & Cross-Region Data Transfer
 # ------------------------------------------------------------------------------
 
 data "google_project" "project" {}
@@ -26,8 +22,7 @@ resource "google_service_account_iam_member" "transfer_agent_token_creator" {
   member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
 }
 
-# Explicit wait buffer to allow Google's IAM token minting cache to propagate
-# before the Data Transfer Service validates service account delegation.
+# Wait buffer to allow IAM token minting cache to propagate before transfer config tests delegation
 resource "time_sleep" "wait_for_transfer_iam" {
   depends_on = [
     google_service_account_iam_member.transfer_agent_token_creator,
@@ -52,7 +47,7 @@ resource "google_bigquery_dataset" "thelook_ecommerce" {
 
   delete_contents_on_destroy = var.environment == "dev" ? true : false
 
-  depends_on = [time_sleep.wait_for_services]
+  depends_on = [var.services_dependency]
 }
 
 resource "google_bigquery_dataset" "analytics" {
@@ -69,7 +64,7 @@ resource "google_bigquery_dataset" "analytics" {
 
   delete_contents_on_destroy = var.environment == "dev" ? true : false
 
-  depends_on = [time_sleep.wait_for_services]
+  depends_on = [var.services_dependency]
 }
 
 resource "google_bigquery_data_transfer_config" "thelook_cross_region_copy" {
@@ -92,6 +87,6 @@ resource "google_bigquery_data_transfer_config" "thelook_cross_region_copy" {
   depends_on = [
     google_bigquery_dataset.thelook_ecommerce,
     time_sleep.wait_for_transfer_iam,
-    time_sleep.wait_for_services
+    var.services_dependency,
   ]
 }

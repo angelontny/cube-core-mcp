@@ -18,6 +18,9 @@ The repository strictly isolates infrastructure automation, application services
 cube-core-mcp/
 ├── docs/                                  # Architectural specifications and runbooks
 │   ├── bootstrap_terraform_sa.sh          # Automated Tier 0 SA bootstrap script
+│   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core architecture, GCP mappings, & query lifecycle
+│   ├── cube_core_implementation_plan.md   # Step-by-step 5-tier infrastructure & service delivery plan
+│   ├── terraform_modularization_and_state_migration.md # Modularization rationale & state migration runbook
 │   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
 │   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
 │   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
