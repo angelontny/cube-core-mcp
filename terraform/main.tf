@@ -23,3 +23,16 @@ module "storage" {
   environment         = var.environment
   services_dependency = time_sleep.wait_for_services
 }
+
+# ------------------------------------------------------------------------------
+# Tier 2: Private Networking Layer (VPC, Subnet, Cloud NAT & Internal Firewall)
+# ------------------------------------------------------------------------------
+
+module "networking" {
+  source = "./modules/networking"
+
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  services_dependency = time_sleep.wait_for_services
+}

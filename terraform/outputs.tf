@@ -42,3 +42,18 @@ output "cube_store_service_account_email" {
   description = "The email address of the dedicated Cube Store service account."
   value       = module.storage.service_account_email
 }
+
+output "vpc_network_name" {
+  description = "The name of the custom VPC network."
+  value       = module.networking.network_name
+}
+
+output "cube_subnet_name" {
+  description = "The name of the private Cube subnet."
+  value       = module.networking.subnet_name
+}
+
+output "cube_store_internal_ip" {
+  description = "The reserved internal IP address for the Cube Store cache node."
+  value       = module.networking.cube_store_internal_ip
+}
