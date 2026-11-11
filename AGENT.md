@@ -19,12 +19,15 @@ cube-core-mcp/
 ├── docs/                                  # Architectural specifications and runbooks
 │   ├── bootstrap_terraform_sa.sh          # Automated Tier 0 SA bootstrap script
 │   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core architecture, GCP mappings, & query lifecycle
+│   ├── cube_core_deployment_guide_review.md # Official deployment review, BigQuery export mechanics, & env blueprints
+│   ├── adr_why_cube_store_cannot_run_on_cloud_run.md # Technical ADR on Cloud Run vs Compute Engine for Cube Store
 │   ├── cube_core_implementation_plan.md   # Step-by-step 5-tier infrastructure & service delivery plan
 │   ├── terraform_modularization_and_state_migration.md # Modularization rationale & state migration runbook
 │   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
 │   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
 │   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
-│   └── bigquery_setup_and_sample_data.md  # BigQuery architecture, DTS sample ingestion, & prod guide
+│   ├── bigquery_setup_and_sample_data.md  # BigQuery architecture, DTS sample ingestion, & prod guide
+│   └── terraform/modules/                 # Module-specific documentation (bigquery, storage, networking, compute)
 ├── terraform/                             # Declarative cloud infrastructure
 │   ├── versions.tf                        # Engine, Terraform, and provider version pins
 │   ├── backend.tf                         # Partial GCS remote state configuration (prefix only)
@@ -33,9 +36,9 @@ cube-core-mcp/
 │   ├── terraform.tfvars.example           # Committed template for environment variables
 │   ├── services.tf                        # Declarative workload API enablement and propagation timers
 │   ├── state_bucket.tf                    # GCS remote state bucket definition
-│   ├── bigquery.tf                        # BigQuery datasets and cross-region Data Transfer config
+│   ├── main.tf                            # Top-level child module orchestrator
 │   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
-│   └── (Phase 1 planned modules)          # networking.tf, storage.tf, compute.tf, cloud_run.tf
+│   └── modules/                           # Reusable child modules (bigquery, storage, networking, compute)
 ├── src/                                   # Application code (Phases 2-4)
 │   ├── dbt/                               # Native dbt project (thelook transformations & manifest generator)
 │   ├── cube/                              # Cube Core Dockerfile, schema definitions, dbt parsers

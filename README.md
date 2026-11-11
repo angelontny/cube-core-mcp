@@ -52,12 +52,23 @@ cube-core-mcp/
 ├── docs/
 │   ├── bootstrap_terraform_sa.sh             # Automated Tier 0 SA bootstrap script
 │   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core engine architecture, GCP mappings, & query lifecycle
-│   ├── semantic_layer_execution_plan.md      # Five-phase end-to-end technical roadmap
+│   ├── cube_core_implementation_plan.md      # Five-phase end-to-end technical roadmap
+│   ├── terraform_modularization_and_state_migration.md # Modularization rationale & state migration runbook
 │   ├── terraform_setup_and_authentication.md # Step-by-step 8-stage initialization runbook
 │   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
-│   └── bigquery_setup_and_sample_data.md     # BigQuery architecture, DTS sample ingestion, & prod guide
+│   ├── bigquery_setup_and_sample_data.md     # BigQuery architecture, DTS sample ingestion, & prod guide
+│   ├── adr_why_cube_store_cannot_run_on_cloud_run.md # ADR: Why Cube Store requires Compute Engine over Cloud Run
+│   ├── adr_why_systemd_supervises_cube_store_on_cos.md # ADR: Why systemd supervises Cube Store instead of raw docker run
+│   ├── cube_core_deployment_guide_review.md  # Official deployment review, BigQuery export mechanics, & env vars
+│   ├── gcloud_health_check_runbook.md        # Comprehensive gcloud commands for all active modules
+│   └── terraform/                            # Module-specific documentation
+│       └── modules/
+│           ├── bigquery.md                   # BigQuery dataset & DTS module specification
+│           ├── storage.md                    # Cube Store Parquet GCS cache module specification
+│           ├── networking.md                 # VPC, subnet, Cloud NAT & firewall specification
+│           ├── compute.md                    # Cube Store Spot VM & toggle switch specification
+│           └── debug_runbook.md              # Targeted gcloud & bq debugging commands for active modules
 └── terraform/                                # Infrastructure as Code baseline
-    ├── .gitignore                            # State and secret protections
     ├── versions.tf                           # Provider & Terraform engine constraints
     ├── backend.tf                            # Partial GCS remote state configuration
     ├── providers.tf                          # HashiCorp Google provider configuration
@@ -65,8 +76,13 @@ cube-core-mcp/
     ├── terraform.tfvars.example              # Template local variables file
     ├── services.tf                           # Declarative workload API enablement & propagation timers
     ├── state_bucket.tf                       # GCS remote state bucket definition
-    ├── bigquery.tf                           # BigQuery datasets and cross-region Data Transfer config
-    └── outputs.tf                            # Output values (project, state bucket, enabled APIs)
+    ├── main.tf                               # Top-level child module orchestrator
+    ├── outputs.tf                            # Exported attributes and endpoints
+    └── modules/                              # Reusable child modules
+        ├── bigquery/                         # Datasets, DTS transfer, and DTS service account
+        ├── storage/                          # Cube Store GCS cache bucket and workload IAM
+        ├── networking/                       # VPC, private subnet, Cloud NAT, and firewall
+        └── compute/                          # Cube Store Spot VM (e2-small, 10 GB disk, toggle)
 └── src/                                      # Application services and transformation layers
     └── dbt/                                  # Native dbt project transforming thelook_ecommerce
 ```
@@ -145,6 +161,9 @@ terraform plan -var-file=terraform.tfvars
 ## Documentation Reference Index
 
 * [Cube Core Architecture & GCP Mapping](docs/cube_core_architecture_and_gcp_mapping.md) — Technical breakdown of Cube Core components, GCP resource instantiation, and the end-to-end query evaluation lifecycle.
+* [Cube Core Deployment Guide Review](docs/cube_core_deployment_guide_review.md) — Deep dive into official Docker patterns, BigQuery Parquet export mechanics (`CUBEJS_DB_EXPORT_BUCKET`), and environment blueprints.
+* [gcloud Health Check Runbook](docs/gcloud_health_check_runbook.md) — Comprehensive copy-pasteable CLI commands to verify, debug, and monitor BigQuery, GCS, VPC, Spot VMs, and Cloud Run.
+* [ADR: Why Cube Store Cannot Run on Cloud Run](docs/adr_why_cube_store_cannot_run_on_cloud_run.md) — Analysis of Cloud Run Services, Jobs, and Worker Pools vs. Compute Engine Spot VMs for database caching engines.
 * [Cube Core & FastMCP Implementation Plan](docs/cube_core_implementation_plan.md) — Step-by-step 5-tier technical runbook from storage and networking to semantic engine and FastMCP.
 * [Terraform Modularization & State Migration](docs/terraform_modularization_and_state_migration.md) — Architectural rationale, directory refactoring, and zero-downtime state pointer migration runbook.
 * [Semantic Layer Execution Plan](docs/semantic_layer_execution_plan.md) — Comprehensive plan covering:
