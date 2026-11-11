@@ -82,7 +82,9 @@ ROLES=(
   "roles/run.admin"                           # Cloud Run deployment
   "roles/compute.networkAdmin"                # VPC networking and Direct Egress
   "roles/compute.securityAdmin"               # Managing VPC firewall rules (compute.firewalls.create)
+  "roles/iap.tunnelResourceAccessor"          # Opening IAP TCP tunnels for zero-public-IP SSH & port forwarding
   "roles/iam.serviceAccountAdmin"             # Creating & managing workload Service Accounts
+  "roles/iam.serviceAccountKeyAdmin"          # Creating & managing Service Account keys (iam.serviceAccountKeys.create)
   "roles/iam.serviceAccountUser"              # Attaching runtime SAs to Compute/Cloud Run
   "roles/resourcemanager.projectIamAdmin"     # Managing runtime SA role bindings
 )
