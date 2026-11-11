@@ -75,3 +75,20 @@ resource "google_compute_address" "cube_store_internal_ip" {
   region       = var.region
   description  = "Static internal IP reserved for the Cube Store cache engine instance"
 }
+
+# 7. Ingress Firewall: Port 22 (SSH via Identity-Aware Proxy)
+# Allows secure administrative SSH access strictly via Google Cloud IAP with zero public IP.
+resource "google_compute_firewall" "allow_iap_ssh" {
+  name        = "allow-iap-ssh"
+  network     = google_compute_network.vpc.name
+  description = "Allows incoming SSH traffic on port 22 strictly from Google Identity-Aware Proxy"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  # Official Google Cloud IAP netblock
+  source_ranges = ["35.235.240.0/20"]
+  target_tags   = ["cube-store-node"]
+}
