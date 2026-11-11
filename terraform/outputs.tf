@@ -57,3 +57,8 @@ output "cube_store_internal_ip" {
   description = "The reserved internal IP address for the Cube Store cache node."
   value       = module.networking.cube_store_internal_ip
 }
+
+output "cube_store_instance_name" {
+  description = "The name of the deployed Cube Store Compute Engine instance."
+  value       = module.compute.instance_name
+}

@@ -21,6 +21,29 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "enable_cube_store" {
+  type        = bool
+  description = "Toggle to turn the Cube Store Spot VM on or off."
+  default     = true
+}
+
+variable "cube_store_machine_type" {
+  type        = string
+  description = "Compute Engine machine type for the Cube Store Spot VM."
+  default     = "e2-small"
+}
+
+variable "cube_store_boot_disk_size_gb" {
+  type        = number
+  description = "Boot disk size in GB for the Cube Store VM (minimum 10 GB for Container-Optimized OS)."
+  default     = 10
+
+  validation {
+    condition     = var.cube_store_boot_disk_size_gb >= 10
+    error_message = "The boot disk size must be at least 10 GB for Google Container-Optimized OS."
+  }
+}
+
 variable "gcp_services" {
   type        = list(string)
   description = "List of GCP APIs to enable for Phase 1 infrastructure."

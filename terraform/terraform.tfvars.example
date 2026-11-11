@@ -1,4 +1,7 @@
-project_id  = "your-gcp-project-id"
-region      = "us-central1"
-zone        = "us-central1-a"
-environment = "dev"
+project_id                   = "your-gcp-project-id"
+region                       = "us-central1"
+zone                         = "us-central1-a"
+environment                  = "dev"
+enable_cube_store            = true
+cube_store_machine_type      = "e2-small"
+cube_store_boot_disk_size_gb = 10
