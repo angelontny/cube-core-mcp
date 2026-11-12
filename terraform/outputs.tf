@@ -58,6 +58,21 @@ output "cube_store_internal_ip" {
   value       = module.networking.cube_store_internal_ip
 }
 
+output "artifact_registry_repository_id" {
+  description = "The Artifact Registry Docker repository ID."
+  value       = module.cloud_run.repository_id
+}
+
+output "cloud_run_service_account_email" {
+  description = "The email address of the Cloud Run runtime service account."
+  value       = module.cloud_run.service_account_email
+}
+
+output "cloud_run_service_uri" {
+  description = "The URL of the deployed Cloud Run Cube Core API service."
+  value       = module.cloud_run.service_uri
+}
+
 output "cube_store_instance_name" {
   description = "The name of the deployed Cube Store Compute Engine instance."
   value       = module.compute.instance_name

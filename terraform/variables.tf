@@ -27,6 +27,12 @@ variable "enable_cube_store" {
   default     = true
 }
 
+variable "enable_cloud_run" {
+  type        = bool
+  description = "Toggle to deploy the Cloud Run Cube Core API service. Keep false until container image is built and pushed."
+  default     = false
+}
+
 variable "cube_store_machine_type" {
   type        = string
   description = "Compute Engine machine type for the Cube Store Spot VM."
@@ -48,8 +54,10 @@ variable "gcp_services" {
   type        = list(string)
   description = "List of GCP APIs to enable for Phase 1 infrastructure."
   default = [
+    "artifactregistry.googleapis.com",     # Artifact Registry for Docker images
     "bigquery.googleapis.com",             # Google BigQuery
     "bigquerydatatransfer.googleapis.com", # BigQuery Data Transfer Service
+    "cloudbuild.googleapis.com",           # Cloud Build for container builds
     "compute.googleapis.com",              # Spot VM & MIG
     "run.googleapis.com",                  # Cloud Run Services
     "storage.googleapis.com",              # GCS Buckets (Cube Store & State)

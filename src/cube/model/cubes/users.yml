@@ -1,0 +1,66 @@
+cubes:
+  - name: users
+    sql_table: analytics.dim_users
+    description: "Customer dimension table including geography, demographics, and age brackets."
+
+    dimensions:
+      - name: user_id
+        sql: user_id
+        type: number
+        primary_key: true
+        description: "Primary key of the user."
+
+      - name: full_name
+        sql: full_name
+        type: string
+        description: "Concatenated first and last name."
+
+      - name: email
+        sql: email
+        type: string
+        description: "Customer email address."
+
+      - name: age
+        sql: age
+        type: number
+        description: "Customer age in years."
+
+      - name: age_bracket
+        sql: age_bracket
+        type: string
+        description: "Binned age segmentation (Under 20, 20-29, 30-39, etc.)."
+
+      - name: gender
+        sql: gender
+        type: string
+        description: "Customer gender."
+
+      - name: city
+        sql: city
+        type: string
+        description: "Customer city of residence."
+
+      - name: state
+        sql: state
+        type: string
+        description: "Customer state or province."
+
+      - name: country
+        sql: country
+        type: string
+        description: "User country of residence."
+
+      - name: traffic_source
+        sql: traffic_source
+        type: string
+        description: "Customer acquisition channel (Search, Organic, Facebook, Email, Display)."
+
+      - name: registered_at
+        sql: registered_at
+        type: time
+        description: "Timestamp when the customer account was registered."
+
+    measures:
+      - name: count
+        type: count
+        description: "Total registered customer count."

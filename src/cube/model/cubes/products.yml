@@ -1,0 +1,76 @@
+cubes:
+  - name: products
+    sql_table: analytics.dim_products
+    description: "Product dimension table enriched with category, department, and margin metrics."
+
+    dimensions:
+      - name: product_id
+        sql: product_id
+        type: number
+        primary_key: true
+        description: "Primary key of the product."
+
+      - name: product_name
+        sql: product_name
+        type: string
+        description: "Product catalog title."
+
+      - name: category
+        sql: category
+        type: string
+        description: "High-level merchandise category."
+
+      - name: brand
+        sql: brand
+        type: string
+        description: "Brand name."
+
+      - name: department
+        sql: department
+        type: string
+        description: "Merchandise department (Men, Women)."
+
+      - name: cost
+        sql: cost
+        type: number
+        description: "Wholesale acquisition cost per unit."
+
+      - name: retail_price
+        sql: retail_price
+        type: number
+        description: "List retail price per unit."
+
+      - name: profit_margin
+        sql: profit_margin
+        type: number
+        description: "Gross margin per unit (retail_price minus wholesale cost)."
+
+      - name: profit_margin_percent
+        sql: profit_margin_percent
+        type: number
+        description: "Gross margin percentage per unit."
+
+      - name: distribution_center_id
+        sql: distribution_center_id
+        type: number
+        description: "ID of the fulfillment/distribution center storing the item."
+
+    measures:
+      - name: count
+        type: count
+        description: "Total catalog product count."
+
+      - name: average_retail_price
+        type: avg
+        sql: retail_price
+        description: "Average retail price of catalog products."
+
+      - name: average_cost
+        type: avg
+        sql: cost
+        description: "Average wholesale cost of catalog products."
+
+      - name: average_margin
+        type: avg
+        sql: profit_margin
+        description: "Average gross profit margin per product in catalog."

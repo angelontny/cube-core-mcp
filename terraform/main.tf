@@ -56,3 +56,25 @@ module "compute" {
   cube_store_sa_email    = module.storage.service_account_email
   cube_store_bucket_name = module.storage.bucket_name
 }
+
+# ------------------------------------------------------------------------------
+# Tier 4: Serving Layer (Cube Core API on Cloud Run with Direct VPC Egress)
+# ------------------------------------------------------------------------------
+
+module "cloud_run" {
+  source = "./modules/cloud_run"
+
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
+  enabled               = var.enable_cloud_run
+  allow_unauthenticated = false
+  invoker_members = [
+    "serviceAccount:terraform@${var.project_id}.iam.gserviceaccount.com"
+  ]
+  network_id             = module.networking.network_id
+  subnet_id              = module.networking.subnet_id
+  cube_store_host        = var.enable_cube_store ? module.networking.cube_store_internal_ip : ""
+  cube_store_bucket_name = module.storage.bucket_name
+  services_dependency    = time_sleep.wait_for_services
+}

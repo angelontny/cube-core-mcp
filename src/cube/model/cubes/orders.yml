@@ -1,0 +1,103 @@
+cubes:
+  - name: orders
+    sql_table: analytics.fct_orders
+    description: "Order-level grain fact table containing total sale amounts, margins, and statuses."
+
+    joins:
+      - name: users
+        relationship: many_to_one
+        sql: "{CUBE}.user_id = {users.user_id}"
+
+    dimensions:
+      - name: order_id
+        sql: order_id
+        type: number
+        primary_key: true
+        description: "Primary key of the order."
+
+      - name: user_id
+        sql: user_id
+        type: number
+        description: "Foreign key referencing dim_users."
+
+      - name: order_status
+        sql: order_status
+        type: string
+        description: "Current status of the order (Complete, Shipped, Processing, Cancelled, Returned)."
+
+      - name: gender
+        sql: gender
+        type: string
+        description: "Gender associated with the order."
+
+      - name: created_at
+        sql: created_at
+        type: time
+        description: "Timestamp when the order was placed."
+
+      - name: shipped_at
+        sql: shipped_at
+        type: time
+        description: "Timestamp when the order was shipped."
+
+      - name: delivered_at
+        sql: delivered_at
+        type: time
+        description: "Timestamp when the order was delivered."
+
+      - name: returned_at
+        sql: returned_at
+        type: time
+        description: "Timestamp when the order was returned."
+
+      - name: item_count
+        sql: item_count
+        type: number
+        description: "Number of distinct items contained in the order."
+
+      - name: is_returned
+        sql: is_returned
+        type: boolean
+        description: "Boolean flag indicating whether any item in the order was returned."
+
+    measures:
+      - name: count
+        type: count
+        description: "Total number of orders."
+
+      - name: total_revenue
+        type: sum
+        sql: total_amount
+        description: "Gross merchandise value across all orders."
+
+      - name: total_profit
+        type: sum
+        sql: total_margin
+        description: "Total profit margin generated across all orders."
+
+      - name: total_cost_sum
+        type: sum
+        sql: total_cost
+        description: "Total wholesale cost of goods across all orders."
+
+      - name: completed_orders_count
+        type: count
+        filters:
+          - sql: "{CUBE}.order_status = 'Complete'"
+        description: "Number of completed orders."
+
+      - name: returned_orders_count
+        type: count
+        filters:
+          - sql: "{CUBE}.is_returned = true"
+        description: "Number of orders with returned items."
+
+      - name: return_rate
+        type: number
+        sql: "ROUND(SAFE_DIVIDE({returned_orders_count}, {count}) * 100, 2)"
+        description: "Percentage of orders that resulted in a return."
+
+      - name: profit_margin_rate
+        type: number
+        sql: "ROUND(SAFE_DIVIDE({total_profit}, {total_revenue}) * 100, 2)"
+        description: "Gross profit margin percentage across all orders."
