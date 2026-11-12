@@ -27,7 +27,7 @@ cube-core-mcp/
 │   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
 │   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
 │   ├── bigquery_setup_and_sample_data.md  # BigQuery architecture, DTS sample ingestion, & prod guide
-│   └── terraform/modules/                 # Module-specific documentation (bigquery, storage, networking, compute)
+│   └── terraform/modules/                 # Module-specific documentation (bigquery, storage, networking, compute, cloud_run)
 ├── terraform/                             # Declarative cloud infrastructure
 │   ├── versions.tf                        # Engine, Terraform, and provider version pins
 │   ├── backend.tf                         # Partial GCS remote state configuration (prefix only)
@@ -38,7 +38,7 @@ cube-core-mcp/
 │   ├── state_bucket.tf                    # GCS remote state bucket definition
 │   ├── main.tf                            # Top-level child module orchestrator
 │   ├── outputs.tf                         # Exported infrastructure attributes and endpoints
-│   └── modules/                           # Reusable child modules (bigquery, storage, networking, compute)
+│   └── modules/                           # Reusable child modules (bigquery, storage, networking, compute, cloud_run)
 ├── src/                                   # Application code (Phases 2-4)
 │   ├── dbt/                               # Native dbt project (thelook transformations & manifest generator)
 │   ├── cube/                              # Cube Core Dockerfile, schema definitions, dbt parsers

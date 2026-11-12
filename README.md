@@ -62,6 +62,7 @@ cube-core-mcp/
 │   ├── adr_separation_of_dbt_transformations_and_cube_semantic_layer.md # ADR: Separation of dbt transformations and Cube semantic layer
 │   ├── cube_core_deployment_guide_review.md  # Official deployment review, BigQuery export mechanics, & env vars
 │   ├── cube_core_api_direct_bigquery_guide.md # Tier 4: Direct BigQuery Mode implementation guide
+│   ├── cloud_run_troubleshooting_and_error_runbook.md # Cloud Run deployment, error analysis, & resolution runbook
 │   ├── gcloud_health_check_runbook.md        # Comprehensive gcloud commands for all active modules
 │   └── terraform/                            # Module-specific documentation
 │       └── modules/
@@ -69,6 +70,7 @@ cube-core-mcp/
 │           ├── storage.md                    # Cube Store Parquet GCS cache module specification
 │           ├── networking.md                 # VPC, subnet, Cloud NAT & firewall specification
 │           ├── compute.md                    # Cube Store Spot VM & toggle switch specification
+│           ├── cloud_run.md                  # Cloud Run v2 Cube API & Artifact Registry module specification
 │           └── debug_runbook.md              # Targeted gcloud & bq debugging commands for active modules
 └── terraform/                                # Infrastructure as Code baseline
     ├── versions.tf                           # Provider & Terraform engine constraints
@@ -84,9 +86,11 @@ cube-core-mcp/
         ├── bigquery/                         # Datasets, DTS transfer, and DTS service account
         ├── storage/                          # Cube Store GCS cache bucket and workload IAM
         ├── networking/                       # VPC, private subnet, Cloud NAT, and firewall
-        └── compute/                          # Cube Store Spot VM (e2-small, 10 GB disk, toggle)
+        ├── compute/                          # Cube Store Spot VM (e2-small, 10 GB disk, toggle)
+        └── cloud_run/                        # Cloud Run v2 Cube API, Artifact Registry & IAM
 └── src/                                      # Application services and transformation layers
-    └── dbt/                                  # Native dbt project transforming thelook_ecommerce
+    ├── dbt/                                  # Native dbt project transforming thelook_ecommerce
+    └── cube/                                 # Lean Cube Core container with declarative YAML models
 ```
 
 ---
