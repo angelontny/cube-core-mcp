@@ -59,7 +59,9 @@ cube-core-mcp/
 │   ├── bigquery_setup_and_sample_data.md     # BigQuery architecture, DTS sample ingestion, & prod guide
 │   ├── adr_why_cube_store_cannot_run_on_cloud_run.md # ADR: Why Cube Store requires Compute Engine over Cloud Run
 │   ├── adr_why_systemd_supervises_cube_store_on_cos.md # ADR: Why systemd supervises Cube Store instead of raw docker run
+│   ├── adr_separation_of_dbt_transformations_and_cube_semantic_layer.md # ADR: Separation of dbt transformations and Cube semantic layer
 │   ├── cube_core_deployment_guide_review.md  # Official deployment review, BigQuery export mechanics, & env vars
+│   ├── cube_core_api_direct_bigquery_guide.md # Tier 4: Direct BigQuery Mode implementation guide
 │   ├── gcloud_health_check_runbook.md        # Comprehensive gcloud commands for all active modules
 │   └── terraform/                            # Module-specific documentation
 │       └── modules/
