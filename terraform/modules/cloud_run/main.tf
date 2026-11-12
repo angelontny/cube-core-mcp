@@ -9,6 +9,34 @@ resource "google_artifact_registry_repository" "cube_repo" {
   description   = "Docker repository for Cube Core and FastMCP container images"
   format        = "DOCKER"
 
+  cleanup_policy_dry_run = false
+
+  cleanup_policies {
+    id     = "keep-latest-version"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 1
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-untagged"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "3600s" # 1 hour
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-older-than-1-day"
+    action = "DELETE"
+    condition {
+      tag_state  = "ANY"
+      older_than = "86400s" # 1 day
+    }
+  }
+
   labels = {
     environment = var.environment
     purpose     = "cube-core-mcp"
