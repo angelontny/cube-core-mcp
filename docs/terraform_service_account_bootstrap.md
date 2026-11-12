@@ -124,8 +124,11 @@ echo "==> [4/5] Assigning baseline deployment roles to ${SA_EMAIL}..."
 ROLES=(
   "roles/serviceusage.serviceUsageAdmin"        # Allows Terraform to enable APIs declaratively
   "roles/storage.admin"                       # Remote state bucket & Cube Store storage
+  "roles/artifactregistry.admin"              # Managing Artifact Registry repositories (artifactregistry.repositories.create)
+  "roles/cloudbuild.builds.editor"            # Managing and executing Cloud Build builds
   "roles/compute.instanceAdmin.v1"            # Spot VM & Managed Instance Groups
   "roles/run.admin"                           # Cloud Run deployment
+  "roles/run.invoker"                         # Invoking private Cloud Run services
   "roles/compute.networkAdmin"                # VPC networking & Direct Egress
   "roles/compute.securityAdmin"               # Managing VPC firewall rules (compute.firewalls.create)
   "roles/iap.tunnelResourceAccessor"          # Opening IAP TCP tunnels for zero-public-IP SSH & port forwarding
