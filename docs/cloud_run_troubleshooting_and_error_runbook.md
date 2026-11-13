@@ -251,3 +251,129 @@ curl -s -X POST "$CUBE_URL/cubejs-api/v1/load" \
   {"users.country": "Brasil", "orders.total_revenue": "1579146.43"}
 ]
 ```
+
+---
+
+### Issue 7: YAML Array Syntax for `pre_aggregations` in Cube Data Models
+
+#### Exact Error Output
+```text
+Error: Compile errors:
+cubes/orders.yml Errors:
+preAggregations must be defined as array
+```
+
+#### Root Cause
+In Cube YAML schemas, `pre_aggregations:` must be defined as a YAML list of objects with `- name: <identifier>` and `type: rollup` rather than a key-value mapping dictionary.
+
+#### Resolution
+Updated [src/cube/model/cubes/orders.yml](file:///home/angelo/projects/cube-core-mcp/src/cube/model/cubes/orders.yml) to declare the pre-aggregation as a list item at the cube root level:
+```yaml
+    pre_aggregations:
+      - name: orders_status_summary
+        type: rollup
+        measures:
+          - count
+          - total_revenue
+          - total_profit
+        dimensions:
+          - order_status
+```
+
+---
+
+### Issue 8: BigQuery Staging Dataset & Data Editor Role for Pre-Aggregation Builds
+
+#### Exact Error Output
+```text
+Error: Access Denied: Project cube-core-mcp: User does not have bigquery.datasets.create permission in project cube-core-mcp.
+```
+
+#### Root Cause
+When Cube Core builds a pre-aggregation for the first time, it creates transient staging tables in BigQuery under the `${environment}_pre_aggregations` schema (e.g., `dev_pre_aggregations`). The Cloud Run runtime service account (`cloud-run-cube-sa`) initially only held `roles/bigquery.dataViewer` (read-only) and lacked permissions to create or write tables.
+
+#### Resolution
+1. Created the staging dataset `google_bigquery_dataset.pre_aggregations` (`dev_pre_aggregations`) in [terraform/modules/bigquery/main.tf](file:///home/angelo/projects/cube-core-mcp/terraform/modules/bigquery/main.tf) with `location = "asia-south1"` and a 24-hour table expiration policy (`default_table_expiration_ms = 86400000`).
+2. Replaced `roles/bigquery.dataViewer` with `roles/bigquery.dataEditor` on `cloud-run-cube-sa` in [terraform/modules/cloud_run/main.tf](file:///home/angelo/projects/cube-core-mcp/terraform/modules/cloud_run/main.tf).
+
+---
+
+### Issue 9: Workload Identity GCS Self-Signing & `iam.serviceAccounts.signBlob`
+
+#### Exact Error Output
+```text
+Error: Permission 'iam.serviceAccounts.signBlob' denied on resource (or it may not exist).
+```
+
+#### Root Cause
+When BigQuery exports Parquet files directly into Google Cloud Storage (`cube-core-mcp-cube-store-cache`), Google's client library inside Cloud Run uses the IAM Service Account Credentials API (`iamcredentials.googleapis.com`) to generate signed blob URLs. Because Cloud Run relies on metadata server tokens instead of static RSA private keys, the service account must have permission to sign blobs on its own identity.
+
+#### Resolution
+1. Added `google_service_account_iam_member.cloud_run_cube_token_creator` in [terraform/modules/cloud_run/main.tf](file:///home/angelo/projects/cube-core-mcp/terraform/modules/cloud_run/main.tf):
+   ```hcl
+   resource "google_service_account_iam_member" "cloud_run_cube_token_creator" {
+     service_account_id = google_service_account.cloud_run_cube.name
+     role               = "roles/iam.serviceAccountTokenCreator"
+     member             = "serviceAccount:${google_service_account.cloud_run_cube.email}"
+   }
+   ```
+2. Added `"iamcredentials.googleapis.com"` to `var.gcp_services` in [terraform/variables.tf](file:///home/angelo/projects/cube-core-mcp/terraform/variables.tf).
+
+---
+
+## 4. L1 & L2 Cache Live Verification Results
+
+Once all permissions propagated, the end-to-end multi-tier caching pipeline was tested live:
+
+### 1. SQL Query Planner Match (Cube Store L2 Routing)
+Inspection of `POST /cubejs-api/v1/sql`:
+```json
+{
+  "external": true,
+  "sql": [
+    "SELECT \"orders__order_status\", sum(\"orders__count\"), sum(\"orders__total_revenue\") \nFROM dev_pre_aggregations.orders_orders_status_summary AS \"orders__orders_status_summary\"\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 10000"
+  ],
+  "preAggregations": [
+    {
+      "preAggregationId": "orders.orders_status_summary",
+      "tableName": "dev_pre_aggregations.orders_orders_status_summary",
+      "type": "rollup",
+      "external": true
+    }
+  ],
+  "rollupMatchResults": [
+    {"name": "orders.orders_status_summary", "canUsePreAggregation": true}
+  ]
+}
+```
+
+### 2. Physical Storage Layer Verification (GCS & Parquet)
+Inspection of `gs://cube-core-mcp-cube-store-cache/` verified that BigQuery exported and Cube Store ingested the pre-aggregation chunk:
+* **GCS Parquet Chunk**: `gs://cube-core-mcp-cube-store-cache//1-lrhydh5x.chunk.parquet`
+* **Cube Store RocksDB SST files**: `gs://cube-core-mcp-cube-store-cache//metastore-1794589698330/`
+
+### 3. Execution & Cache Hit Performance
+```json
+{
+  "usedPreAggregations": {
+    "dev_pre_aggregations.orders_orders_status_summary": {
+      "targetTableName": "dev_pre_aggregations.orders_orders_status_summary_etmakdyz_lbwdudws_1lfehs8",
+      "preAggregationId": "orders.orders_status_summary",
+      "type": "rollup"
+    }
+  },
+  "extDbType": "cubestore",
+  "external": true,
+  "data": [
+    {"orders.order_status": "Shipped", "orders.count": "37466", "orders.total_revenue": "3264843.58"},
+    {"orders.order_status": "Complete", "orders.count": "31396", "orders.total_revenue": "2693199.39"},
+    {"orders.order_status": "Processing", "orders.count": "24918", "orders.total_revenue": "2175194.73"},
+    {"orders.order_status": "Cancelled", "orders.count": "18782", "orders.total_revenue": "1629693.30"},
+    {"orders.order_status": "Returned", "orders.count": "12517", "orders.total_revenue": "1098735.88"}
+  ]
+}
+```
+
+* **L2 Cache (Cube Store)**: Served from Cube Store internal memory / Parquet chunk in `~150ms` total network roundtrip.
+* **L1 Cache (In-Memory)**: Subsequent identical query returned from memory in `~140ms` total network roundtrip with zero backend scans.
+
