@@ -59,6 +59,7 @@ variable "gcp_services" {
     "bigquerydatatransfer.googleapis.com", # BigQuery Data Transfer Service
     "cloudbuild.googleapis.com",           # Cloud Build for container builds
     "compute.googleapis.com",              # Spot VM & MIG
+    "iamcredentials.googleapis.com",       # IAM Service Account Credentials API for signBlob
     "run.googleapis.com",                  # Cloud Run Services
     "storage.googleapis.com",              # GCS Buckets (Cube Store & State)
     "vpcaccess.googleapis.com",            # Direct VPC Egress / Serverless Connector

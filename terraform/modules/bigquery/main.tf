@@ -65,6 +65,23 @@ resource "google_bigquery_dataset" "analytics" {
   depends_on = [var.services_dependency]
 }
 
+resource "google_bigquery_dataset" "pre_aggregations" {
+  dataset_id                  = "${var.environment}_pre_aggregations"
+  friendly_name               = "Cube Pre-aggregations Staging"
+  description                 = "Staging dataset for Cube Core pre-aggregation builds and materializations"
+  location                    = var.region
+  default_table_expiration_ms = 86400000 # 24-hour expiration for transient build tables
+
+  labels = {
+    environment = var.environment
+    purpose     = "cube-pre-aggregations"
+  }
+
+  delete_contents_on_destroy = var.environment == "dev" ? true : false
+
+  depends_on = [var.services_dependency]
+}
+
 resource "google_bigquery_data_transfer_config" "thelook_cross_region_copy" {
   display_name           = "thelook-ecommerce-cross-region-sync"
   location               = var.region

@@ -52,6 +52,13 @@ resource "google_service_account" "cloud_run_cube" {
   description  = "Dedicated runtime service account for the Cube Core API service on Cloud Run"
 }
 
+# 3. Workload Self-Signing: Token Creator (permits signBlob for GCS signed URLs and Parquet export)
+resource "google_service_account_iam_member" "cloud_run_cube_token_creator" {
+  service_account_id = google_service_account.cloud_run_cube.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.cloud_run_cube.email}"
+}
+
 # 3. Additive IAM: BigQuery Job User (project level to submit queries)
 resource "google_project_iam_member" "cube_bq_job_user" {
   project = var.project_id
@@ -59,10 +66,10 @@ resource "google_project_iam_member" "cube_bq_job_user" {
   member  = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 4. Additive IAM: BigQuery Data Viewer (project level to read analytics & thelook_ecommerce)
-resource "google_project_iam_member" "cube_bq_data_viewer" {
+# 4. Additive IAM: BigQuery Data Editor (project level to read, write, and export pre-aggregation tables)
+resource "google_project_iam_member" "cube_bq_data_editor" {
   project = var.project_id
-  role    = "roles/bigquery.dataViewer"
+  role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
@@ -189,7 +196,7 @@ resource "google_cloud_run_v2_service" "cube_api" {
   depends_on = [
     google_artifact_registry_repository.cube_repo,
     google_project_iam_member.cube_bq_job_user,
-    google_project_iam_member.cube_bq_data_viewer,
+    google_project_iam_member.cube_bq_data_editor,
     google_project_iam_member.cube_logging,
     var.services_dependency
   ]
