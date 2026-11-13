@@ -101,3 +101,13 @@ cubes:
         type: number
         sql: "ROUND(SAFE_DIVIDE({total_profit}, {total_revenue}) * 100, 2)"
         description: "Gross profit margin percentage across all orders."
+
+    pre_aggregations:
+      - name: orders_status_summary
+        type: rollup
+        measures:
+          - count
+          - total_revenue
+          - total_profit
+        dimensions:
+          - order_status
