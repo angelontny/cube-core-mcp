@@ -21,35 +21,7 @@ resource "google_compute_subnetwork" "subnet" {
   description              = "Private subnet hosting Cube Store Spot VM and Cloud Run Direct VPC Egress"
 }
 
-# 3. Regional Cloud Router for Cloud NAT Gateway
-resource "google_compute_router" "router" {
-  name    = "cube-router"
-  region  = var.region
-  network = google_compute_network.vpc.id
-}
-
-# 4. Regional Cloud NAT Gateway
-# Enables egress-only internet connectivity for private Spot VMs to pull public
-# container images from Docker Hub without assigning an external public IP.
-resource "google_compute_router_nat" "nat" {
-  name                               = "cube-nat-gateway"
-  router                             = google_compute_router.router.name
-  region                             = var.region
-  nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
-
-  subnetwork {
-    name                    = google_compute_subnetwork.subnet.id
-    source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
-  }
-
-  log_config {
-    enable = true
-    filter = "ERRORS_ONLY"
-  }
-}
-
-# 5. Ingress Firewall: Port 3030 (MySQL wire protocol) and Port 9999 (internal metastore)
+# 3. Ingress Firewall: Port 3030 (MySQL wire protocol) and Port 9999 (internal metastore)
 # Allowed strictly from internal subnet addresses (Cloud Run Direct VPC Egress).
 resource "google_compute_firewall" "allow_cube_store_internal" {
   name        = "allow-cube-store-internal"

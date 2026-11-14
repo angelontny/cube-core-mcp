@@ -1,6 +1,18 @@
 variable "project_id" {
   type        = string
-  description = "The GCP Project ID where resources will be provisioned."
+  description = "The GCP Project ID where serving resources will be provisioned (Project B)."
+}
+
+variable "reporting_project_id" {
+  type        = string
+  description = "Project ID of the BigQuery reporting/warehouse layer (Project A). Leave empty to use project_id."
+  default     = ""
+}
+
+variable "reporting_dataset_id" {
+  type        = string
+  description = "BigQuery dataset name containing reporting fact and dimension tables."
+  default     = "analytics"
 }
 
 variable "region" {
@@ -64,5 +76,30 @@ variable "gcp_services" {
     "storage.googleapis.com",              # GCS Buckets (Cube Store & State)
     "vpcaccess.googleapis.com",            # Direct VPC Egress / Serverless Connector
     "logging.googleapis.com",              # Cloud Logging sinks
+    "secretmanager.googleapis.com",        # Secret Manager for OAuth & API secrets
   ]
+}
+
+variable "google_auth_enabled" {
+  type        = bool
+  description = "Whether to enforce Google OAuth authentication inside FastMCP."
+  default     = false
+}
+
+variable "invoker_members" {
+  type        = list(string)
+  description = "List of IAM identities granted roles/run.invoker to access the Cloud Run service (e.g. user:alice@example.com, group:team@example.com, serviceAccount:...)."
+  default     = []
+}
+
+variable "fastmcp_public_url" {
+  type        = string
+  description = "Public HTTPS URL of the Cloud Run service, used for Google OAuth 2.0 callback redirect URIs."
+  default     = "https://cube-mcp-h3ungosjsa-el.a.run.app"
+}
+
+variable "fastmcp_transport" {
+  type        = string
+  description = "Transport protocol for FastMCP ('streamable-http' or 'sse')."
+  default     = "streamable-http"
 }

@@ -1,6 +1,22 @@
+# ------------------------------------------------------------------------------
+# Cloud Run Module: Variables (Unified Multi-Container Service)
+# ------------------------------------------------------------------------------
+
 variable "project_id" {
   type        = string
   description = "The GCP Project ID where resources will be provisioned."
+}
+
+variable "reporting_project_id" {
+  type        = string
+  description = "Project ID of the BigQuery reporting/warehouse layer (Project A). Leave empty to use project_id."
+  default     = ""
+}
+
+variable "reporting_dataset_id" {
+  type        = string
+  description = "BigQuery dataset name containing reporting fact and dimension tables."
+  default     = "analytics"
 }
 
 variable "region" {
@@ -34,55 +50,75 @@ variable "service_account_id" {
 
 variable "enabled" {
   type        = bool
-  description = "Whether to provision the Cloud Run service. Set to false initially until the container image is built and pushed to Artifact Registry."
+  description = "Whether to provision the Cloud Run service. Set to false initially until container images are built."
   default     = false
 }
 
 variable "service_name" {
   type        = string
-  description = "Name of the Cloud Run v2 service."
-  default     = "cube-api"
+  description = "Name of the unified multi-container Cloud Run v2 service."
+  default     = "cube-mcp"
 }
 
 variable "container_image" {
   type        = string
-  description = "Specific container image URL to deploy. If empty, defaults to the latest tag in the provisioned Artifact Registry repository."
+  description = "Specific container image URL for Cube Core. If empty, defaults to latest tag in Artifact Registry."
   default     = ""
 }
 
-variable "container_port" {
-  type        = number
-  description = "Container port that Cube Core listens on."
-  default     = 4000
+variable "fastmcp_container_image" {
+  type        = string
+  description = "Specific container image URL for FastMCP. If empty, defaults to latest tag in Artifact Registry."
+  default     = ""
 }
+
+# --- Sizing & Scaling (Service Level) ---
 
 variable "min_instances" {
   type        = number
-  description = "Minimum number of Cloud Run container instances. Default is 0 (scale to zero when idle for $0.00 compute cost)."
+  description = "Minimum instances for the multi-container service (0 enables scale-to-zero when idle)."
   default     = 0
 }
 
 variable "max_instances" {
   type        = number
-  description = "Maximum number of Cloud Run container instances."
+  description = "Maximum scaling ceiling for the multi-container service."
   default     = 3
 }
 
-variable "cpu_limit" {
+# --- Container Limits: Cube Core Sidecar ---
+
+variable "cube_cpu_limit" {
   type        = string
-  description = "CPU allocation for the Cloud Run container (e.g. 1000m = 1 vCPU)."
+  description = "CPU limit for the Cube Core sidecar container."
   default     = "1000m"
 }
 
-variable "memory_limit" {
+variable "cube_memory_limit" {
   type        = string
-  description = "Memory allocation for the Cloud Run container."
+  description = "Memory limit for the Cube Core sidecar container."
   default     = "1Gi"
 }
 
+# --- Container Limits: FastMCP Ingress ---
+
+variable "fastmcp_cpu_limit" {
+  type        = string
+  description = "CPU limit for the FastMCP ingress container."
+  default     = "1000m"
+}
+
+variable "fastmcp_memory_limit" {
+  type        = string
+  description = "Memory limit for the FastMCP ingress container."
+  default     = "1Gi"
+}
+
+# --- Operational Toggles & Configuration ---
+
 variable "dev_mode" {
   type        = bool
-  description = "Whether to enable Cube developer mode (CUBEJS_DEV_MODE)."
+  description = "Whether to run Cube Core in development mode."
   default     = true
 }
 
@@ -92,42 +128,56 @@ variable "cubejs_api_secret" {
   default     = "cube-core-mcp-secure-api-secret-key-2026"
 }
 
+variable "google_auth_enabled" {
+  type        = bool
+  description = "Whether to enforce Google OAuth authentication inside FastMCP."
+  default     = false
+}
+
+variable "fastmcp_public_url" {
+  type        = string
+  description = "Public URL of the FastMCP service for OAuth redirect URI construction."
+  default     = ""
+}
+
+variable "fastmcp_transport" {
+  type        = string
+  description = "Transport protocol for FastMCP ('streamable-http' or 'sse')."
+  default     = "streamable-http"
+}
+
+# --- Networking (Direct VPC Egress to Cube Store) ---
+
 variable "network_id" {
   type        = string
-  description = "The VPC network ID for Direct VPC Egress."
+  description = "The self-link or resource ID of the VPC network."
 }
 
 variable "subnet_id" {
   type        = string
-  description = "The regional subnetwork ID for Direct VPC Egress."
+  description = "The self-link or resource ID of the subnetwork for Direct VPC Egress."
 }
 
 variable "cube_store_host" {
   type        = string
-  description = "Internal IP address or hostname of the Cube Store cache node (empty when running in Direct BigQuery Mode)."
+  description = "Internal IP address of the Cube Store cache node (e.g. 10.10.0.10)."
   default     = ""
 }
 
 variable "cube_store_port" {
   type        = string
-  description = "Port of the Cube Store cache node."
+  description = "Port on which Cube Store accepts connections (default 3030)."
   default     = "3030"
 }
 
 variable "cube_store_bucket_name" {
   type        = string
-  description = "GCS bucket name for Cube Store cache exports (optional)."
+  description = "GCS bucket name for Cube Store cache exports."
   default     = ""
-}
-
-variable "allow_unauthenticated" {
-  type        = bool
-  description = "Whether to allow unauthenticated invocations (allUsers) on the Cloud Run service. Default is false (strictly private/authenticated)."
-  default     = false
 }
 
 variable "invoker_members" {
   type        = list(string)
-  description = "List of IAM members authorized to invoke the private Cloud Run service (e.g. serviceAccount:terraform@...)."
+  description = "List of IAM members authorized to invoke the private Cloud Run service."
   default     = []
 }

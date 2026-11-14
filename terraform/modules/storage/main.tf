@@ -46,3 +46,10 @@ resource "google_project_iam_member" "cube_store_logging" {
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.cube_store.email}"
 }
+
+# 5. Additive IAM: Artifact Registry Reader to pull container images privately via Private Google Access
+resource "google_project_iam_member" "cube_store_ar_reader" {
+  project = var.project_id
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.cube_store.email}"
+}

@@ -78,6 +78,7 @@ resource "google_compute_instance" "cube_store" {
             Restart=always
             ExecStartPre=-/usr/bin/docker stop %n
             ExecStartPre=-/usr/bin/docker rm %n
+            ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=${var.region}-docker.pkg.dev
             ExecStartPre=/usr/bin/docker pull ${var.cube_store_image}
             ExecStart=/usr/bin/docker run --rm --name %n \
               -p 3030:3030 \

@@ -1,8 +1,15 @@
 project_id                   = "your-gcp-project-id"
+reporting_project_id         = "" # Leave empty if single-project; set to Project A ID if cross-project
+reporting_dataset_id         = "analytics" # BigQuery dataset containing fact/dimension tables
 region                       = "us-central1"
 zone                         = "us-central1-a"
 environment                  = "dev"
 enable_cube_store            = false
 enable_cloud_run             = false
+google_auth_enabled          = false
+fastmcp_transport            = "streamable-http"
 cube_store_machine_type      = "e2-small"
 cube_store_boot_disk_size_gb = 10
+# List of Google accounts or groups permitted to invoke the service (roles/run.invoker)
+# e.g., ["user:analyst@example.com", "group:data-team@example.com"]
+invoker_members              = []

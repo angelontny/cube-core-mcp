@@ -64,16 +64,31 @@ output "artifact_registry_repository_id" {
 }
 
 output "cloud_run_service_account_email" {
-  description = "The email address of the Cloud Run runtime service account."
+  description = "The email address of the unified Cloud Run runtime service account."
   value       = module.cloud_run.service_account_email
 }
 
 output "cloud_run_service_uri" {
-  description = "The URL of the deployed Cloud Run Cube Core API service."
+  description = "The public HTTPS endpoint of the unified multi-container Cloud Run service (FastMCP Ingress)."
   value       = module.cloud_run.service_uri
+}
+
+output "cloud_run_service_name" {
+  description = "The name of the unified multi-container Cloud Run service."
+  value       = module.cloud_run.service_name
 }
 
 output "cube_store_instance_name" {
   description = "The name of the deployed Cube Store Compute Engine instance."
   value       = module.compute.instance_name
+}
+
+output "google_client_id_secret_id" {
+  description = "Resource name of the Secret Manager secret for Google OAuth Client ID."
+  value       = module.cloud_run.google_client_id_secret_id
+}
+
+output "google_client_secret_secret_id" {
+  description = "Resource name of the Secret Manager secret for Google OAuth Client Secret."
+  value       = module.cloud_run.google_client_secret_secret_id
 }
