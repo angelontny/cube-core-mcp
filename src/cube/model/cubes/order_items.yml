@@ -1,6 +1,6 @@
 cubes:
   - name: order_items
-    sql_table: analytics.fct_order_items
+    sql_table: "{{ COMPILE_CONTEXT.sourceTable('fct_order_items') }}"
     description: "Line-item grain fact table for individual product sales, delivery status, and returns."
 
     joins:

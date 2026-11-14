@@ -1,6 +1,6 @@
 cubes:
   - name: users
-    sql_table: analytics.dim_users
+    sql_table: "{{ COMPILE_CONTEXT.sourceTable('dim_users') }}"
     description: "Customer dimension table including geography, demographics, and age brackets."
 
     dimensions:
