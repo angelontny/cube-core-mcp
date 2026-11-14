@@ -74,8 +74,10 @@ resource "google_compute_instance" "cube_store" {
             Requires=docker.service
 
             [Service]
+            Environment="HOME=/var/lib/cube-store"
             TimeoutStartSec=0
             Restart=always
+            ExecStartPre=/bin/mkdir -p /var/lib/cube-store
             ExecStartPre=-/usr/bin/docker stop %n
             ExecStartPre=-/usr/bin/docker rm %n
             ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries=${var.region}-docker.pkg.dev
@@ -95,8 +97,9 @@ resource "google_compute_instance" "cube_store" {
             WantedBy=multi-user.target
 
       runcmd:
+        - mkdir -p /var/lib/cube-store
         - systemctl daemon-reload
-        - systemctl start cube-store.service
+        - systemctl restart cube-store.service
     EOF
   }
 }

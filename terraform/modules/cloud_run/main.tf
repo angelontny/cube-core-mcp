@@ -159,9 +159,10 @@ resource "google_secret_manager_secret_iam_member" "cube_sa_secrets_accessor" {
 
 # 10. Multi-Container Cloud Run v2 Service (Conditional on enabled = true)
 locals {
-  cube_image_url       = var.container_image != "" ? var.container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/cube-api:latest"
-  fastmcp_image_url    = var.fastmcp_container_image != "" ? var.fastmcp_container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/fastmcp-api:latest"
-  reporting_project_id = var.reporting_project_id != "" ? var.reporting_project_id : var.project_id
+  cube_image_url         = var.container_image != "" ? var.container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/cube-api:latest"
+  fastmcp_image_url      = var.fastmcp_container_image != "" ? var.fastmcp_container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/fastmcp-api:latest"
+  reporting_project_id   = var.reporting_project_id != "" ? var.reporting_project_id : var.project_id
+  reporting_table_prefix = var.reporting_project_id != "" && var.reporting_project_id != var.project_id ? "`${var.reporting_project_id}`.${var.reporting_dataset_id}" : var.reporting_dataset_id
 }
 
 resource "google_cloud_run_v2_service" "cube_mcp" {
@@ -184,13 +185,12 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
       image = local.cube_image_url
 
       startup_probe {
-        initial_delay_seconds = 0
-        timeout_seconds       = 3
-        period_seconds        = 3
-        failure_threshold     = 20
+        initial_delay_seconds = 2
+        timeout_seconds       = 4
+        period_seconds        = 5
+        failure_threshold     = 24
 
-        http_get {
-          path = "/readyz"
+        tcp_socket {
           port = 4000
         }
       }
@@ -217,6 +217,10 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
       env {
         name  = "CUBEJS_REPORTING_DATASET_ID"
         value = var.reporting_dataset_id
+      }
+      env {
+        name  = "CUBEJS_REPORTING_TABLE_PREFIX"
+        value = local.reporting_table_prefix
       }
       env {
         name  = "CUBEJS_DB_BQ_LOCATION"
