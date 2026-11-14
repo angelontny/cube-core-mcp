@@ -1,6 +1,6 @@
 cubes:
   - name: orders
-    sql_table: "{{ COMPILE_CONTEXT.sourceTable('fct_orders') }}"
+    sql_table: "{{ env_var('CUBEJS_REPORTING_TABLE_PREFIX', 'analytics') | safe }}.fct_orders"
     description: "Order-level grain fact table containing total sale amounts, margins, and statuses."
 
     joins:

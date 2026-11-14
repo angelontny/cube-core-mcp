@@ -1,6 +1,6 @@
 cubes:
   - name: products
-    sql_table: "{{ COMPILE_CONTEXT.sourceTable('dim_products') }}"
+    sql_table: "{{ env_var('CUBEJS_REPORTING_TABLE_PREFIX', 'analytics') | safe }}.dim_products"
     description: "Product dimension table enriched with category, department, and margin metrics."
 
     dimensions:
