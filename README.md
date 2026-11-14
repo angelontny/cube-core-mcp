@@ -63,6 +63,8 @@ cube-core-mcp/
 │   ├── cube_core_deployment_guide_review.md  # Official deployment review, BigQuery export mechanics, & env vars
 │   ├── cube_core_api_direct_bigquery_guide.md # Tier 4: Direct BigQuery Mode implementation guide
 │   ├── cloud_run_troubleshooting_and_error_runbook.md # Cloud Run deployment, error analysis, & resolution runbook
+│   ├── fastmcp_implementation_and_architecture_guide.md # FastMCP server architecture, tools, OAuth, & streamable HTTP
+│   ├── fastmcp_local_testing_and_verification_guide.md # FastMCP local CLI testing, mock suites, & verification
 │   ├── gcloud_health_check_runbook.md        # Comprehensive gcloud commands for all active modules
 │   └── terraform/                            # Module-specific documentation
 │       └── modules/
@@ -180,6 +182,7 @@ terraform plan -var-file=terraform.tfvars
   * **Phase 5:** Plug-and-Play Template Rollout (Cross-project IAM & parameterization).
 * [Terraform Setup & Authentication Guide](docs/terraform_setup_and_authentication.md) — Tooling installation, Application Default Credentials, race condition prevention, and provider settings.
 * [Terraform Service Account Bootstrap & IAM Strategy](docs/terraform_service_account_bootstrap.md) — Two-tier IAM architecture rationale and automated bootstrap script.
+* [FastMCP Local Testing & Verification Guide](docs/fastmcp_local_testing_and_verification_guide.md) — Step-by-step local inspection, CLI tool invocation, interactive Dev UI, and Claude Desktop integration.
 * [BigQuery Architecture & Sample Data Guide](docs/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion via DTS, IAM resolution, and production transition steps.
 * [Official HashiCorp Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs) — Up-to-date provider documentation and resource specifications.
 

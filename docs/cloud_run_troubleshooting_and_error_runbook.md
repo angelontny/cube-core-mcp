@@ -321,6 +321,30 @@ When BigQuery exports Parquet files directly into Google Cloud Storage (`cube-co
 
 ---
 
+### Issue 10: Server Options Validation Rejection on `compileContext` in `cube.js`
+
+#### Exact Error Output
+```text
+Error: Invalid cube-server-core options: "compileContext" is not allowed
+    at validateOptions (/cube/node_modules/@cubejs-backend/server-core/src/core/optionsValidate.ts:167:11)
+    at OptsHandler.sanitizeOptions (/cube/node_modules/@cubejs-backend/server-core/src/core/OptsHandler.ts:78:38)
+    at new OptsHandler (/cube/node_modules/@cubejs-backend/server-core/src/core/OptsHandler.ts:46:26)
+    at new CubejsServerCore (/cube/node_modules/@cubejs-backend/server-core/src/core/server.ts:220:24)
+```
+
+#### Root Cause
+In `@cubejs-backend/server-core`, server configuration in `cube.js` is strictly validated against a schema schema validator. `compileContext` is not a top-level server configuration option.
+
+#### Resolution
+1. Restored [src/cube/cube.js](file:///home/angelo/projects/cube-core-mcp/src/cube/cube.js) to clean standard server options without `compileContext`.
+2. Leveraged Cube's official, native Jinja `env_var()` function inside YAML data models ([src/cube/model/cubes/](file:///home/angelo/projects/cube-core-mcp/src/cube/model/cubes)):
+   ```yaml
+   sql_table: "{{ env_var('CUBEJS_REPORTING_TABLE_PREFIX', 'analytics') }}.fct_orders"
+   ```
+3. Injected `CUBEJS_REPORTING_TABLE_PREFIX` dynamically via Terraform in [terraform/modules/cloud_run/main.tf](file:///home/angelo/projects/cube-core-mcp/terraform/modules/cloud_run/main.tf), resolving to `analytics` in single-project mode, and `` `project_a`.analytics `` in cross-project mode.
+
+---
+
 ## 4. L1 & L2 Cache Live Verification Results
 
 Once all permissions propagated, the end-to-end multi-tier caching pipeline was tested live:
@@ -376,4 +400,58 @@ Inspection of `gs://cube-core-mcp-cube-store-cache/` verified that BigQuery expo
 
 * **L2 Cache (Cube Store)**: Served from Cube Store internal memory / Parquet chunk in `~150ms` total network roundtrip.
 * **L1 Cache (In-Memory)**: Subsequent identical query returned from memory in `~140ms` total network roundtrip with zero backend scans.
+
+---
+
+### Issue 11: Jinja JSON Escaping in Cube YAML Data Models
+
+#### Exact Error Output
+```text
+YAMLException: bad indentation of a mapping entry (3:18):
+    sql_table: ""analytics".fct_order_items"
+```
+
+#### Root Cause
+Cube data models using YAML process template expressions with Jinja. By default, Cube's Jinja serializer escapes interpolated string variables as JSON tokens. When concatenating an environment variable prefix directly with a table suffix:
+```yaml
+sql_table: "{{ env_var('CUBEJS_REPORTING_TABLE_PREFIX', 'analytics') }}.fct_orders"
+```
+The expression rendered as `sql_table: ""analytics".fct_orders"`. The adjacent double quotes broke YAML parsing, preventing the Cube process from starting.
+
+#### Resolution
+Appended the `| safe` Jinja filter to all dynamic table references in [src/cube/model/cubes/](file:///home/angelo/projects/cube-core-mcp/src/cube/model/cubes/):
+```yaml
+sql_table: "{{ env_var('CUBEJS_REPORTING_TABLE_PREFIX', 'analytics') | safe }}.fct_orders"
+```
+The `| safe` filter instructs Jinja to output raw scalar characters without JSON quotes, rendering `analytics.fct_orders` in single-project mode or `` `project_a`.analytics.fct_orders `` in cross-project mode.
+
+---
+
+### Issue 12: Sidecar Startup Probe Failure on HTTP `/readyz`
+
+#### Exact Error Output
+```text
+STARTUP HTTP probe failed 20 times consecutively for container "cube-core" on port 4000 path "/readyz". The instance was not started.
+Connection failed with status ERROR_TIMEOUT.
+```
+
+#### Root Cause
+Cube Core's `/readyz` endpoint actively executes a ping query against the underlying database (Google BigQuery) to determine database connectivity. In a cold-starting Cloud Run container, BigQuery query execution latency frequently exceeds tight HTTP probe timeouts (`timeout_seconds = 3`), resulting in `ERROR_TIMEOUT` and preventing the ingress container from starting.
+
+#### Resolution
+Changed the sidecar startup probe in [terraform/modules/cloud_run/main.tf](file:///home/angelo/projects/cube-core-mcp/terraform/modules/cloud_run/main.tf) from an HTTP GET probe on `/readyz` to a standard TCP socket probe on port 4000:
+```hcl
+startup_probe {
+  initial_delay_seconds = 2
+  timeout_seconds       = 4
+  period_seconds        = 5
+  failure_threshold     = 24
+
+  tcp_socket {
+    port = 4000
+  }
+}
+```
+This aligns with Cloud Run best practices for multi-container pods: once Cube Core binds to internal port 4000 (~7 seconds after container start), the TCP socket check succeeds immediately and allows FastMCP ingress to initialize without blocking on external database roundtrips.
+
 

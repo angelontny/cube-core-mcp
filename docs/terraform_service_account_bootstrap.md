@@ -137,6 +137,7 @@ ROLES=(
   "roles/iam.serviceAccountKeyAdmin"          # Creating & managing Service Account keys (iam.serviceAccountKeys.create)
   "roles/iam.serviceAccountUser"              # Attaching runtime SAs to Compute/Cloud Run
   "roles/resourcemanager.projectIamAdmin"     # Managing runtime SA role bindings
+  "roles/secretmanager.admin"                 # Managing Secret Manager secrets for OAuth & API tokens
 )
 
 for role in "${ROLES[@]}"; do

@@ -67,8 +67,7 @@ terraform/modules/cloud_run/
 | `cube_store_bucket_name` | `string` | `""` | GCS bucket for BigQuery Parquet export. |
 | `network_id` | `string` | *required* | VPC network resource ID for Direct Egress. |
 | `subnet_id` | `string` | *required* | Subnet resource ID for Direct Egress. |
-| `allow_unauthenticated` | `bool` | `false` | When false, requires authenticated calls with `roles/run.invoker`. |
-| `invoker_members` | `list(string)` | `[]` | List of IAM identities permitted to invoke the service. |
+| `invoker_members` | `list(string)` | `[]` | List of IAM identities permitted to invoke the private service via impersonation. |
 | `services_dependency` | `any` | `null` | Dependency on API enablement timer. |
 
 ---
@@ -137,7 +136,48 @@ Because `KEEP` rules take precedence in Google Artifact Registry, the newest wor
 
 | Output Identifier | Description |
 | :--- | :--- |
-| `service_uri` | Public HTTPS endpoint for the Cloud Run Cube Core API (`https://cube-api-h3ungosjsa-el.a.run.app`). |
-| `service_name` | Cloud Run v2 service resource name (`cube-api`). |
+| `service_uri` | Public HTTPS endpoint for the unified multi-container Cloud Run service (FastMCP Ingress). |
+| `service_name` | Cloud Run v2 service resource name (`cube-mcp`). |
 | `service_account_email` | Dedicated runtime Service Account email (`cloud-run-cube-sa@...`). |
 | `repository_id` | Artifact Registry repository ID (`cube-repo`). |
+| `google_client_id_secret_id` | Secret Manager secret ID for Google OAuth Client ID (`fastmcp-google-client-id`). |
+| `google_client_secret_secret_id` | Secret Manager secret ID for Google OAuth Client Secret (`fastmcp-google-client-secret`). |
+
+---
+
+## 8. Multi-Container Sidecar Architecture
+
+The module provisions a unified, multi-container Cloud Run v2 service (`cube-mcp`) hosting both the **FastMCP Ingress** and the **Cube Core Sidecar** inside the same instance:
+
+```text
+                  Single Cloud Run Service ("cube-mcp")
+             ┌────────────────────────────────────────────────────────┐
+             │                                                        │
+[ Client ] ──► [ Container 1: fastmcp ] (Ingress, Port 8080)          │
+             │       │                                                │
+             │       │ In-process HTTP over http://127.0.0.1:4000     │
+             │       ▼                                                │
+             │   [ Container 2: cube-core ] (Sidecar, Port 4000)      │
+             └───────────────────────┬────────────────────────────────┘
+                                     │ Direct VPC Egress
+                                     ▼
+                          [ Cube Store (Spot VM) ]
+```
+
+* **Startup Coordination (`depends_on = ["cube-core"]`)**: Cloud Run guarantees `cube-core` is up and accepting connections on port 4000 before `fastmcp` begins routing ingress traffic.
+* **Loopback Networking**: FastMCP reaches Cube Core on `http://127.0.0.1:4000` with zero network latency and zero IAM token overhead.
+* **Network Isolation**: Cube Core does not expose an external port; it only listens on internal loopback. Only FastMCP's port 8080 is exposed.
+* **Shared Direct VPC Egress**: The entire instance routes private traffic directly to the Cube Store Spot VM (`10.10.0.10:3030`).
+
+---
+
+## 9. Zero-Trust Security & `CUBEJS_API_SECRET` Rationale
+
+### Why Unauthenticated Invocations (`allUsers`) Are Disabled
+* Cloud Run defaults to private access. The `allUsers` binding has been removed from the service.
+* Invocations require Google-signed OIDC bearer tokens created via IAM Service Account impersonation (e.g. `gcloud auth print-identity-token --impersonate-service-account=terraform@...`).
+
+### Why the Default `CUBEJS_API_SECRET` Value Is Secure
+* **Infrastructure Edge Gatekeeping**: Google Cloud Run evaluates caller IAM permissions at the global network edge before routing traffic to container instances. Any request lacking a valid Google IAM identity token is rejected with `HTTP 403 Forbidden` before it ever reaches the container.
+* **No Public Attack Vector**: Because unauthenticated internet traffic cannot reach the service, and Cube Core only listens on internal `127.0.0.1:4000`, external actors cannot exploit knowledge of the default `CUBEJS_API_SECRET`.
+* **Application Handshake Layer**: In this architecture, `CUBEJS_API_SECRET` functions as an internal application handshake between FastMCP and Cube Core to satisfy Cube's internal JWT token verification middleware. Leaving it as the default value avoids complex secret management overhead while maintaining full zero-trust security.
