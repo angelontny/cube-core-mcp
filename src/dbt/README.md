@@ -33,7 +33,7 @@ src/dbt/
 ## Local Development & Execution
 
 ### 1. Prerequisites
-Ensure you have authenticated your local workstation Application Default Credentials (ADC) as outlined in [terraform_setup_and_authentication.md](file:///home/angelo/projects/cube-core-mcp/docs/terraform_setup_and_authentication.md):
+Ensure you have authenticated your local workstation Application Default Credentials (ADC) as outlined in [terraform_setup_and_authentication.md](file:///home/angelo/projects/cube-core-mcp/docs/guides/terraform_setup_and_authentication.md):
 
 ```bash
 gcloud auth application-default login

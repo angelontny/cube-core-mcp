@@ -49,31 +49,28 @@ flowchart LR
 cube-core-mcp/
 ├── README.md                                 # Project overview and quickstart guide
 ├── AGENT.md                                  # AI agent system prompt and operating parameters
-├── docs/
-│   ├── bootstrap_terraform_sa.sh             # Automated Tier 0 SA bootstrap script
-│   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core engine architecture, GCP mappings, & query lifecycle
-│   ├── cube_core_implementation_plan.md      # Five-phase end-to-end technical roadmap
-│   ├── terraform_modularization_and_state_migration.md # Modularization rationale & state migration runbook
-│   ├── terraform_setup_and_authentication.md # Step-by-step 8-stage initialization runbook
-│   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
-│   ├── bigquery_setup_and_sample_data.md     # BigQuery architecture, DTS sample ingestion, & prod guide
-│   ├── adr_why_cube_store_cannot_run_on_cloud_run.md # ADR: Why Cube Store requires Compute Engine over Cloud Run
-│   ├── adr_why_systemd_supervises_cube_store_on_cos.md # ADR: Why systemd supervises Cube Store instead of raw docker run
-│   ├── adr_separation_of_dbt_transformations_and_cube_semantic_layer.md # ADR: Separation of dbt transformations and Cube semantic layer
-│   ├── cube_core_deployment_guide_review.md  # Official deployment review, BigQuery export mechanics, & env vars
-│   ├── cube_core_api_direct_bigquery_guide.md # Tier 4: Direct BigQuery Mode implementation guide
-│   ├── cloud_run_troubleshooting_and_error_runbook.md # Cloud Run deployment, error analysis, & resolution runbook
-│   ├── fastmcp_implementation_and_architecture_guide.md # FastMCP server architecture, tools, OAuth, & streamable HTTP
-│   ├── fastmcp_local_testing_and_verification_guide.md # FastMCP local CLI testing, mock suites, & verification
-│   ├── gcloud_health_check_runbook.md        # Comprehensive gcloud commands for all active modules
-│   └── terraform/                            # Module-specific documentation
-│       └── modules/
-│           ├── bigquery.md                   # BigQuery dataset & DTS module specification
-│           ├── storage.md                    # Cube Store Parquet GCS cache module specification
-│           ├── networking.md                 # VPC, subnet, Cloud NAT & firewall specification
-│           ├── compute.md                    # Cube Store Spot VM & toggle switch specification
-│           ├── cloud_run.md                  # Cloud Run v2 Cube API & Artifact Registry module specification
-│           └── debug_runbook.md              # Targeted gcloud & bq debugging commands for active modules
+├── docs/                                     # Structured documentation (Diátaxis Framework)
+│   ├── README.md                             # Master documentation catalog
+│   ├── architecture/                         # Architecture, C4 views, and Decision Records
+│   │   ├── c4_architecture_and_design_context.md # Level 1-4 C4 models, trade-offs, and workarounds
+│   │   └── adrs/                             # Architecture Decision Records (ADRs 0001 - 0007)
+│   ├── guides/                               # Learning tutorials and getting started
+│   │   ├── plug_and_play_installation_guide.md # Complete end-to-end deployment runbook
+│   │   ├── terraform_setup_and_authentication.md # Workstation ADC and state lifecycle
+│   │   ├── fastmcp_local_testing_and_verification.md # Local testing and inspection
+│   │   └── bigquery_setup_and_sample_data.md # Sample data ingestion and warehouse setup
+│   ├── operations/                           # Operational and troubleshooting runbooks
+│   │   ├── cloud_run_troubleshooting_and_error_runbook.md # Deployment error resolution
+│   │   ├── gcloud_health_check_runbook.md    # CLI monitoring and health verification
+│   │   └── bootstrap_terraform_sa.sh         # Tier 0 SA bootstrap automation
+│   ├── reference/                            # Technical specifications and API references
+│   │   ├── terraform_modules.md              # Child module inputs, outputs, and dependencies
+│   │   ├── fastmcp_api_and_tools.md          # MCP tool contracts, schemas, and OAuth specs
+│   │   └── cube_core_modeling_and_config.md  # YAML modeling, Jinja filters, and env vars
+│   └── backlog/                              # Project roadmaps and technical debt
+│       ├── execution_plan.md                 # Five-phase technical delivery roadmap
+│       ├── project_wide_debt.md              # Technical debt items and improvement plan
+│       └── todo_list.md                      # Open backlog tasks
 └── terraform/                                # Infrastructure as Code baseline
     ├── versions.tf                           # Provider & Terraform engine constraints
     ├── backend.tf                            # Partial GCS remote state configuration
@@ -99,7 +96,7 @@ cube-core-mcp/
 
 ## Quickstart Guide
 
-For comprehensive walkthroughs, troubleshooting, and official documentation links, refer to [terraform_setup_and_authentication.md](docs/terraform_setup_and_authentication.md).
+For comprehensive walkthroughs, troubleshooting, and official documentation links, refer to the [Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md) or [Terraform Setup Guide](docs/guides/terraform_setup_and_authentication.md).
 
 ### 1. Prerequisites & Billing Verification
 Ensure your local workstation has `gcloud` and `terraform` (`>= 1.5.0`) installed, and that your target GCP project has an active Cloud Billing account linked:
@@ -166,25 +163,28 @@ terraform plan -var-file=terraform.tfvars
 
 ---
 
-## Documentation Reference Index
+## Documentation Catalog (Diátaxis Framework)
 
-* [Cube Core Architecture & GCP Mapping](docs/cube_core_architecture_and_gcp_mapping.md) — Technical breakdown of Cube Core components, GCP resource instantiation, and the end-to-end query evaluation lifecycle.
-* [Cube Core Deployment Guide Review](docs/cube_core_deployment_guide_review.md) — Deep dive into official Docker patterns, BigQuery Parquet export mechanics (`CUBEJS_DB_EXPORT_BUCKET`), and environment blueprints.
-* [gcloud Health Check Runbook](docs/gcloud_health_check_runbook.md) — Comprehensive copy-pasteable CLI commands to verify, debug, and monitor BigQuery, GCS, VPC, Spot VMs, and Cloud Run.
-* [ADR: Why Cube Store Cannot Run on Cloud Run](docs/adr_why_cube_store_cannot_run_on_cloud_run.md) — Analysis of Cloud Run Services, Jobs, and Worker Pools vs. Compute Engine Spot VMs for database caching engines.
-* [Cube Core & FastMCP Implementation Plan](docs/cube_core_implementation_plan.md) — Step-by-step 5-tier technical runbook from storage and networking to semantic engine and FastMCP.
-* [Terraform Modularization & State Migration](docs/terraform_modularization_and_state_migration.md) — Architectural rationale, directory refactoring, and zero-downtime state pointer migration runbook.
-* [Semantic Layer Execution Plan](docs/semantic_layer_execution_plan.md) — Comprehensive plan covering:
-  * **Phase 1:** Infrastructure as Code (GCS, Spot VM, Cloud Run, VPC Direct Egress).
-  * **Phase 2:** Semantic Engine & CI/CD (dbt manifest ingestion & container builds).
-  * **Phase 3:** FastMCP Serverless Python Wrapper (OAuth 2.1, REST query translation, SSE).
-  * **Phase 4:** Local Client Proxy Bridge (Claude Desktop / Claude Code keychain bridge).
-  * **Phase 5:** Plug-and-Play Template Rollout (Cross-project IAM & parameterization).
-* [Terraform Setup & Authentication Guide](docs/terraform_setup_and_authentication.md) — Tooling installation, Application Default Credentials, race condition prevention, and provider settings.
-* [Terraform Service Account Bootstrap & IAM Strategy](docs/terraform_service_account_bootstrap.md) — Two-tier IAM architecture rationale and automated bootstrap script.
-* [FastMCP Local Testing & Verification Guide](docs/fastmcp_local_testing_and_verification_guide.md) — Step-by-step local inspection, CLI tool invocation, interactive Dev UI, and Claude Desktop integration.
-* [BigQuery Architecture & Sample Data Guide](docs/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion via DTS, IAM resolution, and production transition steps.
-* [Official HashiCorp Google Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs) — Up-to-date provider documentation and resource specifications.
+For the complete catalog, consult [docs/README.md](docs/README.md).
+
+### 1. Tutorials & Getting Started
+* [End-to-End Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md) — Step-by-step onboarding from bootstrap to Claude Web/Desktop/Code connection.
+* [Terraform Setup & Authentication Guide](docs/guides/terraform_setup_and_authentication.md) — Tooling installation, Application Default Credentials, and remote state migration.
+* [BigQuery Architecture & Sample Data Guide](docs/guides/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion via DTS and production transition.
+
+### 2. Architecture, C4 Models & Decision Records
+* [C4 Architecture & Design Context](docs/architecture/c4_architecture_and_design_context.md) — Level 1-4 C4 models, architectural trade-offs, dependencies, and temporary workarounds.
+* [Architecture Decision Records (ADRs)](docs/architecture/adrs/README.md) — ADRs 0001 through 0007 documenting key architectural choices.
+
+### 3. Operational Runbooks & Troubleshooting
+* [Cloud Run Troubleshooting & Error Runbook](docs/operations/cloud_run_troubleshooting_and_error_runbook.md) — Common deployment errors, startup failures, and remediation procedures.
+* [gcloud Health Check Runbook](docs/operations/gcloud_health_check_runbook.md) — Copy-pasteable CLI commands to monitor BigQuery, GCS, Spot VMs, and Cloud Run.
+* [FastMCP Local Testing & Verification](docs/guides/fastmcp_local_testing_and_verification.md) — Local testing, CLI tool invocation, and interactive Dev UI.
+
+### 4. Technical Reference
+* [Terraform Modules Reference](docs/reference/terraform_modules.md) — Inputs, outputs, and dependencies for all child modules.
+* [FastMCP Analytical Tools & API Reference](docs/reference/fastmcp_api_and_tools.md) — Tool schemas, Google OAuth 2.0 specs, and response formats.
+* [Cube Core Modeling & Configuration Reference](docs/reference/cube_core_modeling_and_config.md) — YAML modeling syntax, dynamic table prefixing, and environment variables.
 
 ---
 

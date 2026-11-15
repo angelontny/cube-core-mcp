@@ -16,18 +16,13 @@ The repository strictly isolates infrastructure automation, application services
 
 ```text
 cube-core-mcp/
-├── docs/                                  # Architectural specifications and runbooks
-│   ├── bootstrap_terraform_sa.sh          # Automated Tier 0 SA bootstrap script
-│   ├── cube_core_architecture_and_gcp_mapping.md # Cube Core architecture, GCP mappings, & query lifecycle
-│   ├── cube_core_deployment_guide_review.md # Official deployment review, BigQuery export mechanics, & env blueprints
-│   ├── adr_why_cube_store_cannot_run_on_cloud_run.md # Technical ADR on Cloud Run vs Compute Engine for Cube Store
-│   ├── cube_core_implementation_plan.md   # Step-by-step 5-tier infrastructure & service delivery plan
-│   ├── terraform_modularization_and_state_migration.md # Modularization rationale & state migration runbook
-│   ├── semantic_layer_execution_plan.md   # Five-phase project roadmap and delivery milestones
-│   ├── terraform_setup_and_authentication.md # 8-step workstation setup, ADC, and state migration runbook
-│   ├── terraform_service_account_bootstrap.md # Two-tier IAM architecture and rationale
-│   ├── bigquery_setup_and_sample_data.md  # BigQuery architecture, DTS sample ingestion, & prod guide
-│   └── terraform/modules/                 # Module-specific documentation (bigquery, storage, networking, compute, cloud_run)
+├── docs/                                  # Structured documentation (Diátaxis Framework)
+│   ├── README.md                          # Master documentation catalog
+│   ├── architecture/                      # C4 architecture models and ADRs (ADR 0001 - 0007)
+│   ├── guides/                            # Learning tutorials and getting started runbooks
+│   ├── operations/                        # Operational runbooks, troubleshooting, and bootstrap scripts
+│   ├── reference/                         # Technical specifications (Terraform, FastMCP, Cube Core)
+│   └── backlog/                           # Five-phase roadmap, technical debt, and todo list
 ├── terraform/                             # Declarative cloud infrastructure
 │   ├── versions.tf                        # Engine, Terraform, and provider version pins
 │   ├── backend.tf                         # Partial GCS remote state configuration (prefix only)
