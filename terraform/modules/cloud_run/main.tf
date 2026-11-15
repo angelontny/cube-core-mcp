@@ -254,6 +254,10 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
         value = var.region
       }
       env {
+        name  = "CUBEJS_PRE_AGGREGATIONS_SCHEMA"
+        value = "${var.environment}_pre_aggregations"
+      }
+      env {
         name  = "CUBEJS_DEV_MODE"
         value = (var.environment == "dev" && var.dev_mode) ? "true" : "false"
       }
