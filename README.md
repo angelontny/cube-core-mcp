@@ -1,45 +1,124 @@
 # Cross-Cloud Semantic Layer: Cube Core + FastMCP on GCP
 
-A serverless, cross-cloud plug-and-play semantic layer architecture combining **Cube Core**, **FastMCP**, and **Google Cloud Platform (GCP)** to expose verified dbt metrics to AI agents (Claude Code, Claude Desktop, Cursor, etc.).
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D_1.5.0-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io)
+[![Google Cloud](https://img.shields.io/badge/Google_Cloud-Cloud_Run_v2-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com)
+[![Cube Core](https://img.shields.io/badge/Cube_Core-v0.36.0-5B5BF7?logo=cube&logoColor=white)](https://cube.dev)
+[![FastMCP](https://img.shields.io/badge/FastMCP-Python_3.12-3776AB?logo=python&logoColor=white)](https://github.com/jlowin/fastmcp)
+[![Protocol](https://img.shields.io/badge/Model_Context_Protocol-RFC_6750_OAuth-0A84FF)](https://modelcontextprotocol.io)
+[![Security](https://img.shields.io/badge/IAM-Keyless_ADC-success)](#security-best-practices)
+
+A production-grade, serverless semantic layer architecture combining **Cube Core**, **FastMCP**, and **Google Cloud Platform (GCP)** to expose governed BigQuery data warehouse metrics to autonomous AI agents (**Claude Web**, **Claude Code CLI**, **Claude Desktop**, and **Cursor IDE**) via the **Model Context Protocol (MCP)**.
 
 ---
 
-## Architecture Overview
+## Semantic Metrics in Action
+
+The architecture bridges analytical data warehousing with real-time AI context by compiling complex dimensional models, joins, calculated measures, and rollup pre-aggregations into a centralized semantic engine:
+
+![Cube Core Semantic Dashboard](docs/assets/cube-core-dashboard.jpg)
+
+*Unified semantic dashboard tracking gross merchandise value, profit margins, return rates, line-item economics, and customer trends—accelerated via Cube Store OLAP caching with sub-second response times.*
+
+---
+
+## Core Capabilities & Engineering Highlights
+
+* **Sub-Second Analytical Latency:** Multi-tier caching combines Cube Core L1 in-memory query cache with Cube Store L2 columnar pre-aggregations persisted in Google Cloud Storage as partitioned Apache Parquet chunks.
+* **Governed Metric Consistency:** Centralizes business logic (Gross Merchandise Value, profit margin ratios, return rates) so AI assistants always report identical, mathematically verified numbers.
+* **Enterprise Google OAuth 2.0 (RFC 6750):** Native support for OAuth 2.0 Protected Resource Metadata (`/.well-known/oauth-protected-resource/mcp`), enabling one-click interactive browser authentication in Claude.ai.
+* **Plug-and-Play Warehouse Federation:** Operates seamlessly across single-project mode and cross-project enterprise warehouses using dynamic Jinja `| safe` table prefixing without altering semantic schemas.
+* **Token Budget Optimization:** Custom Python formatters convert multi-megabyte raw JSON database responses into compact, token-efficient Markdown tables, reducing LLM context window consumption by 70–85%.
+* **Zero-Cost Resting State:** Infrastructure can be toggled into a dormant resting state (`~$0.00/month`) with zero hourly NAT or compute fees, scaling to active serving on demand.
+* **Keyless Security Model:** Strictly eliminates static Service Account JSON keys; enforces Application Default Credentials (ADC) with IAM role impersonation.
+
+---
+
+## Architecture Topology
+
+The deployment packages FastMCP and Cube Core into a high-performance **Cloud Run v2 Multi-Container Pod**, communicating over local loopback (`127.0.0.1`) and routing private cache queries to an ephemeral Spot VM over Direct VPC Egress:
 
 ```mermaid
-flowchart LR
-    subgraph LocalEnv["Local Workstation"]
-        Client["AI Assistant Client (Claude Desktop / Claude Code)"]
-        Bridge["Local Proxy Bridge (OAuth 2.1 & OS Keychain)"]
-        Client -->|"stdio"| Bridge
+flowchart TB
+    subgraph ClientLayer["AI Client Layer"]
+        ClaudeWeb["Claude Web (claude.ai)"]
+        ClaudeCode["Claude Code (CLI)"]
+        ClaudeDesk["Claude Desktop / Cursor"]
     end
 
-    subgraph GCP["Google Cloud Platform (GCP)"]
-        direction TB
-
-        subgraph CloudRun["Serverless Compute (Cloud Run)"]
-            FastMCP["FastMCP Wrapper Service (Cloud Run)"]
-            CubeCore["Cube Core API (Cloud Run)"]
-            FastMCP -->|"REST API"| CubeCore
-        end
-
-        subgraph VPC["Private VPC Network"]
-            SpotVM["Cube Store Cache Node (Spot VM in MIG)"]
-        end
-
-        subgraph Storage["Storage & Analytics Layer"]
-            GCS[("Cube Store Parquet Storage (GCS Bucket)")]
-            BQ[("Data Warehouse (Google BigQuery)")]
-        end
-
-        FastMCP -.->|"Direct VPC Egress"| SpotVM
-        CubeCore -.->|"Direct VPC Egress"| SpotVM
-        CubeCore -->|"L1 Fallback Queries"| BQ
-        SpotVM -->|"Store / Evict Parquet"| GCS
+    subgraph ServerlessPod["Google Cloud Run v2 Multi-Container Pod"]
+        FastMCP["FastMCP Ingress Container<br/>(Port 8080 / Python 3.12)<br/>- RFC 6750 Google OAuth 2.0<br/>- 4 MCP Analytical Tools<br/>- Token Markdown Formatters"]
+        CubeCore["Cube Core Sidecar Container<br/>(Port 4000 / Node.js)<br/>- Semantic YAML Data Models<br/>- Query Planner & Cache Manager<br/>- BigQuery SQL Generation"]
+        FastMCP -->|"Local Loopback<br/>127.0.0.1:4000 (Signed JWT)"| CubeCore
     end
 
-    Bridge -->|"Remote SSE (OAuth Bearer Token)"| FastMCP
+    subgraph PrivateVPC["Private VPC Network (cube-network)"]
+        SpotVM["Cube Store OLAP Cache Node<br/>(Compute Engine Spot VM - COS)<br/>- MySQL Wire (Port 3030)<br/>- RocksDB Local Metastore Index<br/>- Private IP: 10.10.0.10"]
+    end
+
+    subgraph StorageLayer["Data & Persistence Tier"]
+        BQ[("Google BigQuery Warehouse<br/>Reporting Dataset (dbt transformed)")]
+        GCS[("GCS Parquet Cache Bucket<br/>gs://PROJECT_ID-cube-store-cache")]
+        SecretMgr[("Google Secret Manager<br/>OAuth 2.0 Client Credentials")]
+    end
+
+    ClaudeWeb -->|"HTTPS (Streamable HTTP / SSE)<br/>+ Google OAuth 2.0"| FastMCP
+    ClaudeCode -->|"HTTPS / mcp-remote"| FastMCP
+    ClaudeDesk -->|"Local Proxy / mcp-remote"| FastMCP
+
+    FastMCP -.->|"Fetch Client ID/Secret"| SecretMgr
+    CubeCore -->|"Direct VPC Egress<br/>MySQL Wire (TCP 3030)"| SpotVM
+    CubeCore -->|"L1 Fallback Queries<br/>BigQuery API (ADC)"| BQ
+    SpotVM -->|"Private Google Access<br/>Parquet Read / Write"| GCS
 ```
+
+---
+
+## Governed AI Analytical Tools
+
+When connected over MCP, AI assistants receive access to 4 governed semantic tools:
+
+| Tool Name | Operation & Purpose | Cache Routing | Response Format |
+| :--- | :--- | :--- | :--- |
+| **`get_metadata()`** | Schema discovery: returns all defined cubes, dimensions, measures, and pre-aggregations. | In-Memory Catalog | Token-efficient Markdown schema catalog |
+| **`run_semantic_query()`** | Executes governed metric queries with dimensions, filters, time ranges, and limits. | L1 Memory $\rightarrow$ L2 Cube Store $\rightarrow$ BigQuery | Compact Markdown table + cache source metadata |
+| **`run_sql_query()`** | Executes ad-hoc or exploratory SQL queries via Cube's SQL API with warehouse pushdown. | Cube SQL Compiler $\rightarrow$ BigQuery | Tabular Markdown result + column definitions |
+| **`explain_sql_query()`** | Generates compiled BigQuery SQL and cache execution plans without running queries. | Query Planner Inspection | Formatted execution plan + raw BigQuery SQL |
+
+---
+
+## Client Integration Guide
+
+### 1. Claude Web (claude.ai)
+1. In Claude Web, navigate to **Settings > Integrations > MCP Servers > Add Custom MCP Server**.
+2. **Name:** `Cube Semantic Layer`
+3. **URL:** `https://<YOUR-CLOUD-RUN-SERVICE-URL>/mcp`
+4. Click **Connect** and authorize access via the Google OAuth popup window.
+
+### 2. Claude Code CLI
+```bash
+claude mcp add cube-semantic-layer -- npx -y mcp-remote https://<YOUR-CLOUD-RUN-SERVICE-URL>/mcp
+```
+
+### 3. Claude Desktop
+Add to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "cube-semantic-layer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://<YOUR-CLOUD-RUN-SERVICE-URL>/mcp"
+      ]
+    }
+  }
+}
+```
+
+### 4. Cursor IDE
+1. Open **Cursor Settings > Features > MCP > Add New MCP Server**.
+2. Set Name: `cube-semantic-layer`, Type: `command`, Command: `npx -y mcp-remote https://<YOUR-CLOUD-RUN-SERVICE-URL>/mcp`.
 
 ---
 
@@ -48,7 +127,7 @@ flowchart LR
 ```text
 cube-core-mcp/
 ├── README.md                                 # Project overview and quickstart guide
-├── AGENT.md                                  # AI agent system prompt and operating parameters
+├── AGENT.md                                  # AI agent system prompt and operating rules
 ├── docs/                                     # Structured documentation (Diátaxis Framework)
 │   ├── README.md                             # Master documentation catalog
 │   ├── architecture/                         # Architecture, C4 views, and Decision Records
@@ -71,53 +150,51 @@ cube-core-mcp/
 │       ├── execution_plan.md                 # Five-phase technical delivery roadmap
 │       ├── project_wide_debt.md              # Technical debt items and improvement plan
 │       └── todo_list.md                      # Open backlog tasks
-└── terraform/                                # Infrastructure as Code baseline
-    ├── versions.tf                           # Provider & Terraform engine constraints
-    ├── backend.tf                            # Partial GCS remote state configuration
-    ├── providers.tf                          # HashiCorp Google provider configuration
-    ├── variables.tf                          # Input variables and workload API definitions
-    ├── terraform.tfvars.example              # Template local variables file
-    ├── services.tf                           # Declarative workload API enablement & propagation timers
-    ├── state_bucket.tf                       # GCS remote state bucket definition
-    ├── main.tf                               # Top-level child module orchestrator
-    ├── outputs.tf                            # Exported attributes and endpoints
-    └── modules/                              # Reusable child modules
-        ├── bigquery/                         # Datasets, DTS transfer, and DTS service account
-        ├── storage/                          # Cube Store GCS cache bucket and workload IAM
-        ├── networking/                       # VPC, private subnet, Cloud NAT, and firewall
-        ├── compute/                          # Cube Store Spot VM (e2-small, 10 GB disk, toggle)
-        └── cloud_run/                        # Cloud Run v2 Cube API, Artifact Registry & IAM
+├── terraform/                                # Declarative infrastructure as code
+│   ├── versions.tf                           # Engine & provider version constraints
+│   ├── backend.tf                            # Partial GCS remote state configuration
+│   ├── providers.tf                          # HashiCorp Google provider configuration
+│   ├── variables.tf                          # Strongly typed input variables
+│   ├── terraform.tfvars.example              # Environment configuration template
+│   ├── services.tf                           # Declarative workload API enablement & timers
+│   ├── state_bucket.tf                       # GCS remote state bucket definition
+│   ├── main.tf                               # Child module orchestration
+│   ├── outputs.tf                            # Exported attributes and endpoints
+│   └── modules/                              # Reusable child modules
+│       ├── bigquery/                         # Datasets, DTS transfer, and DTS service account
+│       ├── storage/                          # Cube Store GCS cache bucket and workload IAM
+│       ├── networking/                       # VPC, private subnet, and firewall rules
+│       ├── compute/                          # Cube Store Spot VM with systemd cloud-init
+│       └── cloud_run/                        # Multi-container Cloud Run v2 service & Artifact Registry
 └── src/                                      # Application services and transformation layers
-    ├── dbt/                                  # Native dbt project transforming thelook_ecommerce
-    └── cube/                                 # Lean Cube Core container with declarative YAML models
+    ├── dbt/                                  # dbt project transforming thelook_ecommerce
+    ├── cube/                                 # Cube Core container & declarative YAML models
+    ├── cube_store/                           # Cloud Build configuration for container mirroring
+    └── fastmcp/                              # FastMCP Python serving wrapper & OAuth engine
 ```
 
 ---
 
-## Quickstart Guide
+## Quickstart Deployment Runbook
 
-For comprehensive walkthroughs, troubleshooting, and official documentation links, refer to the [Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md) or [Terraform Setup Guide](docs/guides/terraform_setup_and_authentication.md).
+For exhaustive step-by-step instructions, troubleshooting runbooks, and cross-project IAM guides, consult the [End-to-End Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md).
 
-### 1. Prerequisites & Billing Verification
-Ensure your local workstation has `gcloud` and `terraform` (`>= 1.5.0`) installed, and that your target GCP project has an active Cloud Billing account linked:
-
+### 1. Prerequisites
+Ensure your local machine has `gcloud` and `terraform` (`>= 1.5.0`) installed, and that your target GCP project has billing enabled:
 ```bash
-# Verify billing status on your target project
 gcloud billing projects describe <YOUR_GCP_PROJECT_ID> --format="value(billingEnabled)"
 ```
-*Must return `True` before proceeding.*
 
 ### 2. Tier 0: Foundation Service Account Bootstrap
-Run the automated bootstrap script [docs/bootstrap_terraform_sa.sh](docs/bootstrap_terraform_sa.sh). It verifies billing, activates core APIs (`serviceusage`, `cloudresourcemanager`, `iam`), provisions the deployment Service Account, and grants keyless impersonation rights:
-
+Execute the automated bootstrap script to provision the deployment service account, grant least-privilege IAM roles, and configure keyless impersonation:
 ```bash
 gcloud auth login
-bash docs/bootstrap_terraform_sa.sh <YOUR_GCP_PROJECT_ID>
+chmod +x docs/operations/bootstrap_terraform_sa.sh
+./docs/operations/bootstrap_terraform_sa.sh <YOUR_GCP_PROJECT_ID>
 ```
 
-### 3. Local Workstation Authentication (Keyless ADC)
-Generate Application Default Credentials (ADC) by impersonating the newly created service account:
-
+### 3. Local Workstation Impersonation (Keyless ADC)
+Generate Application Default Credentials (ADC) without creating static JSON keys:
 ```bash
 gcloud auth application-default login \
   --impersonate-service-account="terraform@<YOUR_GCP_PROJECT_ID>.iam.gserviceaccount.com"
@@ -125,70 +202,69 @@ gcloud auth application-default login \
 gcloud auth application-default set-quota-project <YOUR_GCP_PROJECT_ID>
 ```
 
-### 4. Configure Variables & Deploy Initial Resources
-Navigate to `terraform/`, configure your variable values, and provision the initial state bucket and workload APIs:
+### 4. Build and Mirror Containers
+Mirror Cube Store into Artifact Registry (eliminates Cloud NAT costs) and build the serving images:
+```bash
+# 1. Mirror Cube Store container via Cloud Build
+gcloud builds submit src/cube_store \
+  --project="<YOUR_GCP_PROJECT_ID>" \
+  --config=src/cube_store/cloudbuild.yaml
 
+# 2. Build Cube Core container
+gcloud builds submit src/cube \
+  --project="<YOUR_GCP_PROJECT_ID>" \
+  --tag="asia-south1-docker.pkg.dev/<YOUR_GCP_PROJECT_ID>/cube-repo/cube-api:latest"
+
+# 3. Build FastMCP container
+gcloud builds submit src/fastmcp \
+  --project="<YOUR_GCP_PROJECT_ID>" \
+  --tag="asia-south1-docker.pkg.dev/<YOUR_GCP_PROJECT_ID>/cube-repo/fastmcp-api:latest"
+```
+
+### 5. Provision Infrastructure via Terraform
 ```bash
 cd terraform/
-
-# 1. Copy template and edit with your project ID and region
 cp terraform.tfvars.example terraform.tfvars
+# Configure your project_id, reporting_project_id, and feature flags in terraform.tfvars
 
-# 2. Initialize with local state (backend.tf commented out initially)
-terraform init
-
-# 3. Validate and apply initial resources (state bucket + workload APIs)
+# Initialize remote state backend and apply
+terraform init -backend-config="bucket=<YOUR_GCP_PROJECT_ID>-tfstate"
 terraform validate
 terraform plan -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
-```
-
-### 5. Migrate State to Google Cloud Storage
-Once the bucket is provisioned, enable the remote GCS backend in `backend.tf` and migrate local state:
-
-```bash
-# 1. Ensure terraform/backend.tf is uncommented:
-# terraform {
-#   backend "gcs" {
-#     prefix = "terraform/state"
-#   }
-# }
-
-# 2. Migrate local state into GCS
-terraform init -backend-config="bucket=<YOUR_GCP_PROJECT_ID>-tfstate" -migrate-state
-
-# 3. Verify state synchronization (should report "No changes")
-terraform plan -var-file=terraform.tfvars
 ```
 
 ---
 
 ## Documentation Catalog (Diátaxis Framework)
 
-For the complete catalog, consult [docs/README.md](docs/README.md).
+For the master documentation index, refer to [docs/README.md](docs/README.md).
 
-### 1. Tutorials & Getting Started
-* [End-to-End Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md) — Step-by-step onboarding from bootstrap to Claude Web/Desktop/Code connection.
-* [Terraform Setup & Authentication Guide](docs/guides/terraform_setup_and_authentication.md) — Tooling installation, Application Default Credentials, and remote state migration.
-* [BigQuery Architecture & Sample Data Guide](docs/guides/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion via DTS and production transition.
+### 1. Tutorials & Guides
+* [Plug-and-Play Installation Guide](docs/guides/plug_and_play_installation_guide.md) — Complete setup guide from project bootstrap to AI client connection.
+* [Terraform Setup & Authentication Guide](docs/guides/terraform_setup_and_authentication.md) — Workstation tooling, keyless ADC, and state lifecycle.
+* [BigQuery Architecture & Sample Data Guide](docs/guides/bigquery_setup_and_sample_data.md) — Public eCommerce sample data ingestion and schema setup.
 
 ### 2. Architecture, C4 Models & Decision Records
-* [C4 Architecture & Design Context](docs/architecture/c4_architecture_and_design_context.md) — Level 1-4 C4 models, architectural trade-offs, dependencies, and temporary workarounds.
-* [Architecture Decision Records (ADRs)](docs/architecture/adrs/README.md) — ADRs 0001 through 0007 documenting key architectural choices.
+* [C4 Architecture & Design Context](docs/architecture/c4_architecture_and_design_context.md) — System Context (L1), Containers (L2), Components (L3), Query Lifecycle (L4), and trade-offs.
+* [Architecture Decision Records (ADRs)](docs/architecture/adrs/README.md) — Individual records (ADR 0001 through 0007) documenting key architectural choices.
 
 ### 3. Operational Runbooks & Troubleshooting
-* [Cloud Run Troubleshooting & Error Runbook](docs/operations/cloud_run_troubleshooting_and_error_runbook.md) — Common deployment errors, startup failures, and remediation procedures.
-* [gcloud Health Check Runbook](docs/operations/gcloud_health_check_runbook.md) — Copy-pasteable CLI commands to monitor BigQuery, GCS, Spot VMs, and Cloud Run.
+* [Cloud Run Troubleshooting Runbook](docs/operations/cloud_run_troubleshooting_and_error_runbook.md) — Resolution procedures for container startup, Jinja escaping, and IAM errors.
+* [gcloud Health Check Runbook](docs/operations/gcloud_health_check_runbook.md) — Copy-pasteable CLI commands to inspect BigQuery, GCS, Spot VMs, and Cloud Run.
 * [FastMCP Local Testing & Verification](docs/guides/fastmcp_local_testing_and_verification.md) — Local testing, CLI tool invocation, and interactive Dev UI.
 
 ### 4. Technical Reference
-* [Terraform Modules Reference](docs/reference/terraform_modules.md) — Inputs, outputs, and dependencies for all child modules.
-* [FastMCP Analytical Tools & API Reference](docs/reference/fastmcp_api_and_tools.md) — Tool schemas, Google OAuth 2.0 specs, and response formats.
-* [Cube Core Modeling & Configuration Reference](docs/reference/cube_core_modeling_and_config.md) — YAML modeling syntax, dynamic table prefixing, and environment variables.
+* [Terraform Modules Reference](docs/reference/terraform_modules.md) — Child module inputs, outputs, and dependencies.
+* [FastMCP Analytical Tools Reference](docs/reference/fastmcp_api_and_tools.md) — Tool schemas, Google OAuth 2.0 specs, and response formats.
+* [Cube Core Modeling Reference](docs/reference/cube_core_modeling_and_config.md) — YAML modeling syntax, dynamic table prefixing, and environment variables.
 
 ---
 
 ## Security Best Practices
-* **No Hardcoded Keys:** Application Default Credentials (ADC) and Service Account impersonation are used exclusively for local development. Static JSON keys are neither generated nor stored.
-* **Separation of Concerns:** Deployment credentials (Tier 0) are decoupled from application runtime identities (Tier 1).
+
+* **No Hardcoded Keys:** Application Default Credentials (ADC) and Service Account impersonation are enforced across all operations. Static JSON keys are neither generated nor stored.
+* **Separation of Concerns:** Tier 0 deployment credentials are strictly decoupled from Tier 1 application runtime identities.
+* **Network Isolation:** The Compute Engine Spot VM runs with **zero public IP addresses**, pulling images and persisting Parquet data via **Private Google Access**.
+* **Protected Ingress:** External ingress is restricted to FastMCP over HTTPS, secured with RFC 6750 Google OAuth 2.0 token validation.
 * **Controlled API Lifecycle:** All GCP APIs managed through `google_project_service` use `disable_on_destroy = false` to prevent accidental cascading outages.
