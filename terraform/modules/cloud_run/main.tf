@@ -255,7 +255,7 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
       }
       env {
         name  = "CUBEJS_DEV_MODE"
-        value = var.dev_mode ? "true" : "false"
+        value = (var.environment == "dev" && var.dev_mode) ? "true" : "false"
       }
       env {
         name = "CUBEJS_API_SECRET"

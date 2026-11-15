@@ -45,6 +45,12 @@ variable "enable_cloud_run" {
   default     = false
 }
 
+variable "dev_mode" {
+  type        = bool
+  description = "Whether to run Cube Core in development mode. Only active when environment is 'dev'."
+  default     = false
+}
+
 variable "cube_store_machine_type" {
   type        = string
   description = "Compute Engine machine type for the Cube Store Spot VM."

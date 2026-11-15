@@ -71,6 +71,7 @@ module "cloud_run" {
   region               = var.region
   environment          = var.environment
   enabled              = var.enable_cloud_run
+  dev_mode             = var.dev_mode
   invoker_members = distinct(concat(
     ["serviceAccount:terraform@${var.project_id}.iam.gserviceaccount.com"],
     var.invoker_members

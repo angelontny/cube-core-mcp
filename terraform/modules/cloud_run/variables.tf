@@ -118,8 +118,8 @@ variable "fastmcp_memory_limit" {
 
 variable "dev_mode" {
   type        = bool
-  description = "Whether to run Cube Core in development mode."
-  default     = true
+  description = "Whether to run Cube Core in development mode. Only active when environment is 'dev'."
+  default     = false
 }
 
 variable "cubejs_api_secret" {
