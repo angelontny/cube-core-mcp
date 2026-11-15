@@ -268,3 +268,30 @@ For the master documentation index, refer to [docs/README.md](docs/README.md).
 * **Network Isolation:** The Compute Engine Spot VM runs with **zero public IP addresses**, pulling images and persisting Parquet data via **Private Google Access**.
 * **Protected Ingress:** External ingress is restricted to FastMCP over HTTPS, secured with RFC 6750 Google OAuth 2.0 token validation.
 * **Controlled API Lifecycle:** All GCP APIs managed through `google_project_service` use `disable_on_destroy = false` to prevent accidental cascading outages.
+
+---
+
+## Project Roadmap & TODO
+
+The following enhancements and technical debt items are tracked across [docs/backlog/todo_list.md](docs/backlog/todo_list.md) and [docs/backlog/project_wide_debt.md](docs/backlog/project_wide_debt.md):
+
+### 1. Infrastructure & High Availability
+- [ ] **Spot VM Managed Instance Group (MIG):** Refactor `terraform/modules/compute` from a standalone instance into a zonal Managed Instance Group (target size 1) with auto-healing and health checks to automatically recover when preempted by GCP.
+- [ ] **GCS State Bucket Lifecycle Policy:** Add an automatic object lifecycle retention rule in `terraform/state_bucket.tf` to expire noncurrent state versions older than 30 days while preserving the 5 most recent versions.
+- [ ] **Configurable Persistent Disk Types:** Expose `pd-balanced` or `pd-ssd` disk types as variables in the compute module to accelerate RocksDB metastore I/O operations.
+
+### 2. CI/CD & Developer Tooling
+- [ ] **Automated GitHub Actions CI/CD:** Establish a pull-request pipeline using Workload Identity Federation (WIF) executing `terraform fmt -check`, `validate`, `tflint`, and speculative plan diffs without static service account keys.
+- [ ] **Automated Semantic Image Publishing:** Create a GitHub Actions workflow triggered on model changes in `src/cube/model/` to build, tag, and publish `cube-api:latest` to Artifact Registry.
+- [ ] **Developer Ergonomics (`Makefile`):** Add a root `Makefile` wrapping routine developer workflows (`make auth`, `make init`, `make plan`, `make apply`, `make test`, `make fmt`, `make validate`).
+- [ ] **Pre-commit Hooks & Static Analysis:** Configure `.pre-commit-config.yaml` with `detect-secrets` and `.tflint.hcl` with Google ruleset plugins.
+
+### 3. Semantic Layer & Agent Skills
+- [ ] **Skill for Metric Auto-Generation:** Develop an agent skill to inspect target dbt models and automatically draft corresponding business measures.
+- [ ] **dbt-to-Cube Conversion Skill:** Develop an agent skill to translate dbt semantic models into Cube Core declarative YAML definitions.
+- [ ] **Pre-aggregation Partitioning & Refresh Keys:** Define explicit partition bounds and scheduled `refresh_key` settings on rollups to automate cache invalidation and reduce BigQuery scan costs.
+
+### 4. Client Connectivity & Security
+- [ ] **Dedicated Local Client Proxy Bridge (`src/bridge`):** Build a dedicated Python stdio-to-SSE bridge utilizing local OS keychain integration (`keyring`) for silent, background OAuth refresh token exchange.
+- [ ] **Token Budget Guards & Pagination:** Enhance FastMCP formatters with configurable token limits and pagination controls to prevent context window saturation on wide analytical queries.
+
