@@ -55,7 +55,7 @@ module "compute" {
   cube_store_private_ip  = module.networking.cube_store_internal_ip
   cube_store_sa_email    = module.storage.service_account_email
   cube_store_bucket_name = module.storage.bucket_name
-  cube_store_image       = "${var.region}-docker.pkg.dev/${var.project_id}/cube-repo/cube-store:latest"
+  cube_store_image       = "${var.region}-docker.pkg.dev/${var.project_id}/cube-repo/cube-store:${var.cube_store_image_tag}"
 }
 
 # ------------------------------------------------------------------------------
@@ -71,6 +71,8 @@ module "cloud_run" {
   region               = var.region
   environment          = var.environment
   enabled              = var.enable_cloud_run
+  cube_image_tag       = var.cube_image_tag
+  fastmcp_image_tag    = var.fastmcp_image_tag
   dev_mode             = var.dev_mode
   invoker_members = distinct(concat(
     ["serviceAccount:terraform@${var.project_id}.iam.gserviceaccount.com"],

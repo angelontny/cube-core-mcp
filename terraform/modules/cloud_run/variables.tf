@@ -62,14 +62,26 @@ variable "service_name" {
 
 variable "container_image" {
   type        = string
-  description = "Specific container image URL for Cube Core. If empty, defaults to latest tag in Artifact Registry."
+  description = "Specific container image URL for Cube Core. If empty, defaults to Artifact Registry repository with cube_image_tag."
   default     = ""
+}
+
+variable "cube_image_tag" {
+  type        = string
+  description = "Container image tag for Cube Core in Artifact Registry."
+  default     = "v0.36.0"
 }
 
 variable "fastmcp_container_image" {
   type        = string
-  description = "Specific container image URL for FastMCP. If empty, defaults to latest tag in Artifact Registry."
+  description = "Specific container image URL for FastMCP. If empty, defaults to Artifact Registry repository with fastmcp_image_tag."
   default     = ""
+}
+
+variable "fastmcp_image_tag" {
+  type        = string
+  description = "Container image tag for FastMCP ingress in Artifact Registry."
+  default     = "v0.1.0"
 }
 
 # --- Sizing & Scaling (Service Level) ---

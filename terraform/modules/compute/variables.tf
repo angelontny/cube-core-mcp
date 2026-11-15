@@ -60,5 +60,5 @@ variable "boot_disk_size_gb" {
 variable "cube_store_image" {
   type        = string
   description = "Docker image repository and tag for Cube Store."
-  default     = "cubejs/cubestore:latest"
+  default     = "cubejs/cubestore:v0.36.0"
 }

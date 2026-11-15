@@ -109,3 +109,21 @@ variable "fastmcp_transport" {
   description = "Transport protocol for FastMCP ('streamable-http' or 'sse')."
   default     = "streamable-http"
 }
+
+variable "cube_image_tag" {
+  type        = string
+  description = "Container image tag for Cube Core deployed to Cloud Run."
+  default     = "v0.36.0"
+}
+
+variable "fastmcp_image_tag" {
+  type        = string
+  description = "Container image tag for FastMCP ingress deployed to Cloud Run."
+  default     = "v0.1.0"
+}
+
+variable "cube_store_image_tag" {
+  type        = string
+  description = "Container image tag for Cube Store cache node on Compute Engine."
+  default     = "v0.36.0"
+}

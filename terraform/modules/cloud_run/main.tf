@@ -186,8 +186,8 @@ resource "google_secret_manager_secret_iam_member" "cube_sa_secrets_accessor" {
 
 # 11. Multi-Container Cloud Run v2 Service (Conditional on enabled = true)
 locals {
-  cube_image_url         = var.container_image != "" ? var.container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/cube-api:latest"
-  fastmcp_image_url      = var.fastmcp_container_image != "" ? var.fastmcp_container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/fastmcp-api:latest"
+  cube_image_url         = var.container_image != "" ? var.container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/cube-api:${var.cube_image_tag}"
+  fastmcp_image_url      = var.fastmcp_container_image != "" ? var.fastmcp_container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/fastmcp-api:${var.fastmcp_image_tag}"
   reporting_project_id   = var.reporting_project_id != "" ? var.reporting_project_id : var.project_id
   reporting_table_prefix = var.reporting_project_id != "" && var.reporting_project_id != var.project_id ? "`${var.reporting_project_id}`.${var.reporting_dataset_id}" : var.reporting_dataset_id
 }

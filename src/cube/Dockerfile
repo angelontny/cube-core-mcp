@@ -1,4 +1,5 @@
-FROM cubejs/cube:latest
+ARG CUBEJS_VERSION=v0.36.0
+FROM cubejs/cube:${CUBEJS_VERSION}
 
 WORKDIR /cube/conf
 
