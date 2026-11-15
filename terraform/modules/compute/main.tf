@@ -39,15 +39,14 @@ resource "google_secret_manager_secret_iam_member" "cube_store_sa_key_accessor" 
   member    = "serviceAccount:${var.cube_store_sa_email}"
 }
 
-# 3. Compute Engine Spot VM Instance
-# Deployed with static private IP 10.10.0.10, zero external public IP,
-# 10 GB minimal boot disk, and backed by Cloud Storage Parquet persistence.
-resource "google_compute_instance" "cube_store" {
+# 3. Compute Engine Instance Template for Cube Store Cache Node
+# Configured with Container-Optimized OS, Spot scheduling, and cloud-init systemd service.
+resource "google_compute_instance_template" "cube_store" {
   count = var.enabled ? 1 : 0
 
-  name         = "cube-store"
+  name_prefix  = "cube-store-"
   machine_type = var.machine_type
-  zone         = var.zone
+  region       = var.region
 
   tags = ["cube-store-node"]
 
@@ -59,19 +58,17 @@ resource "google_compute_instance" "cube_store" {
     instance_termination_action = "STOP"
   }
 
-  boot_disk {
-    auto_delete = true
-    initialize_params {
-      image = "projects/cos-cloud/global/images/family/cos-stable"
-      type  = "pd-standard"
-      size  = var.boot_disk_size_gb
-    }
+  disk {
+    auto_delete  = true
+    boot         = true
+    source_image = "projects/cos-cloud/global/images/family/cos-stable"
+    type         = "pd-standard"
+    disk_size_gb = var.boot_disk_size_gb
   }
 
   network_interface {
     subnetwork = var.subnet_id
-    network_ip = var.cube_store_private_ip
-    # Zero external public IP. Inbound via VPC subnet; outbound via Private Google Access.
+    # No public IP; internal IP dynamically assigned or preserved via stateful MIG.
   }
 
   service_account {
@@ -148,8 +145,78 @@ resource "google_compute_instance" "cube_store" {
     EOF
   }
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   depends_on = [
     google_secret_manager_secret_version.cube_store_sa_key,
     google_secret_manager_secret_iam_member.cube_store_sa_key_accessor
   ]
+}
+
+# 4. TCP Health Check on Cube Store MySQL Wire Protocol Port (3030)
+resource "google_compute_health_check" "cube_store" {
+  count = var.enabled ? 1 : 0
+
+  name                = "cube-store-tcp-health-check"
+  check_interval_sec  = 10
+  timeout_sec         = 5
+  healthy_threshold   = 2
+  unhealthy_threshold = 3
+
+  tcp_health_check {
+    port = "3030"
+  }
+}
+
+# 5. Zonal Managed Instance Group (MIG) with Auto-Healing and Auto-Restart
+# Target size 1: Guarantees that when Google preempts the Spot VM, the MIG
+# automatically recreates a fresh instance without manual operator intervention.
+resource "google_compute_instance_group_manager" "cube_store_mig" {
+  count = var.enabled ? 1 : 0
+
+  name               = "cube-store-mig"
+  base_instance_name = "cube-store"
+  zone               = var.zone
+  target_size        = 1
+
+  version {
+    instance_template = google_compute_instance_template.cube_store[0].id
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.cube_store[0].id
+    initial_delay_sec = 120
+  }
+
+  update_policy {
+    type                  = "OPPORTUNISTIC"
+    minimal_action        = "REPLACE"
+    max_unavailable_fixed = 1
+  }
+
+  stateful_internal_ip {
+    interface_name = "nic0"
+  }
+}
+
+# 6. Stateful Per-Instance Config
+# Pins the reserved static internal IP address (10.10.0.10) to the managed instance
+# across preemptions, recreations, and auto-healing events.
+resource "google_compute_per_instance_config" "cube_store" {
+  count = var.enabled ? 1 : 0
+
+  zone                   = var.zone
+  instance_group_manager = google_compute_instance_group_manager.cube_store_mig[0].name
+  name                   = "cube-store-0"
+
+  preserved_state {
+    internal_ip {
+      interface_name = "nic0"
+      ip_address {
+        address = var.cube_store_private_ip
+      }
+    }
+  }
 }
