@@ -124,8 +124,9 @@ variable "dev_mode" {
 
 variable "cubejs_api_secret" {
   type        = string
-  description = "Security secret used by Cube Core to sign and verify API tokens."
-  default     = "cube-core-mcp-secure-api-secret-key-2026"
+  description = "Security secret used by Cube Core to sign and verify API tokens. If left empty, an automated secret is generated in Secret Manager."
+  default     = ""
+  sensitive   = true
 }
 
 variable "google_auth_enabled" {

@@ -146,18 +146,45 @@ resource "google_secret_manager_secret_version" "google_client_secret_placeholde
   }
 }
 
-# 9. IAM: Secret Accessor on OAuth Secrets for Unified Service Account
+# 9. Secret Manager & Random Generator: Cube Core API Secret
+resource "random_password" "cube_api_secret" {
+  length  = 48
+  special = false
+}
+
+resource "google_secret_manager_secret" "cube_api_secret" {
+  secret_id = "cube-api-secret"
+
+  replication {
+    auto {}
+  }
+
+  labels = {
+    environment = var.environment
+    purpose     = "cube-auth"
+  }
+
+  depends_on = [var.services_dependency]
+}
+
+resource "google_secret_manager_secret_version" "cube_api_secret" {
+  secret      = google_secret_manager_secret.cube_api_secret.id
+  secret_data = var.cubejs_api_secret != "" ? var.cubejs_api_secret : random_password.cube_api_secret.result
+}
+
+# 10. IAM: Secret Accessor on OAuth & API Secrets for Unified Service Account
 resource "google_secret_manager_secret_iam_member" "cube_sa_secrets_accessor" {
   for_each = toset([
     google_secret_manager_secret.google_client_id.secret_id,
     google_secret_manager_secret.google_client_secret.secret_id,
+    google_secret_manager_secret.cube_api_secret.secret_id,
   ])
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 10. Multi-Container Cloud Run v2 Service (Conditional on enabled = true)
+# 11. Multi-Container Cloud Run v2 Service (Conditional on enabled = true)
 locals {
   cube_image_url         = var.container_image != "" ? var.container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/cube-api:latest"
   fastmcp_image_url      = var.fastmcp_container_image != "" ? var.fastmcp_container_image : "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.cube_repo.repository_id}/fastmcp-api:latest"
@@ -231,8 +258,13 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
         value = var.dev_mode ? "true" : "false"
       }
       env {
-        name  = "CUBEJS_API_SECRET"
-        value = var.cubejs_api_secret
+        name = "CUBEJS_API_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.cube_api_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name  = "CUBEJS_TELEMETRY"
@@ -298,8 +330,13 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
         value = "http://127.0.0.1:4000"
       }
       env {
-        name  = "CUBE_API_SECRET"
-        value = var.cubejs_api_secret
+        name = "CUBE_API_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.cube_api_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "GOOGLE_CLIENT_ID"
@@ -358,6 +395,7 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
     google_project_iam_member.cube_logging,
     google_secret_manager_secret_version.google_client_id_placeholder,
     google_secret_manager_secret_version.google_client_secret_placeholder,
+    google_secret_manager_secret_version.cube_api_secret,
     google_secret_manager_secret_iam_member.cube_sa_secrets_accessor,
     var.services_dependency
   ]

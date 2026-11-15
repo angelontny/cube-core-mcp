@@ -106,7 +106,7 @@ docker run --rm -it \
   -e CUBEJS_DB_BQ_PROJECT_ID=cube-core-mcp \
   -e CUBEJS_DB_BQ_LOCATION=asia-south1 \
   -e CUBEJS_DEV_MODE=true \
-  -e CUBEJS_API_SECRET=cube-core-mcp-secure-api-secret-key-2026 \
+  -e CUBEJS_API_SECRET="${LOCAL_TEST_SECRET:-$(openssl rand -hex 24)}" \
   -v "$HOME/.config/gcloud/application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json:ro" \
   cubejs/cube:latest
 ```
@@ -116,7 +116,7 @@ In a second terminal:
 ```bash
 cd src/fastmcp
 export CUBE_API_URL="http://localhost:4000"
-export CUBE_API_SECRET="cube-core-mcp-secure-api-secret-key-2026"
+export CUBE_API_SECRET="<YOUR_LOCAL_TEST_SECRET>"
 
 # Fetch live metadata catalog
 uv run fastmcp call src/cube_fastmcp/server.py get_metadata
@@ -153,7 +153,7 @@ Add the `cube-semantic-layer` server configuration:
       "env": {
         "FASTMCP_TRANSPORT": "stdio",
         "CUBE_API_URL": "http://localhost:4000",
-        "CUBE_API_SECRET": "cube-core-mcp-secure-api-secret-key-2026"
+        "CUBE_API_SECRET": "<YOUR_LOCAL_TEST_SECRET>"
       }
     }
   }
