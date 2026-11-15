@@ -86,4 +86,8 @@ module "cloud_run" {
   fastmcp_public_url     = var.fastmcp_public_url
   fastmcp_transport      = var.fastmcp_transport
   services_dependency    = time_sleep.wait_for_services
+
+  depends_on = [
+    module.bigquery,
+  ]
 }

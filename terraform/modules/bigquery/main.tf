@@ -10,10 +10,18 @@ resource "google_service_account" "bq_transfer" {
   description  = "Dedicated identity for executing BigQuery cross-region dataset replication"
 }
 
-resource "google_project_iam_member" "bq_transfer_admin" {
+# Least privilege: Project-level jobUser to run query jobs, and dataset-level dataEditor on the destination dataset
+resource "google_project_iam_member" "bq_transfer_job_user" {
   project = var.project_id
-  role    = "roles/bigquery.admin"
+  role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.bq_transfer.email}"
+}
+
+resource "google_bigquery_dataset_iam_member" "bq_transfer_data_editor" {
+  project    = var.project_id
+  dataset_id = google_bigquery_dataset.thelook_ecommerce.dataset_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${google_service_account.bq_transfer.email}"
 }
 
 resource "google_service_account_iam_member" "transfer_agent_token_creator" {
@@ -26,7 +34,8 @@ resource "google_service_account_iam_member" "transfer_agent_token_creator" {
 resource "time_sleep" "wait_for_transfer_iam" {
   depends_on = [
     google_service_account_iam_member.transfer_agent_token_creator,
-    google_project_iam_member.bq_transfer_admin,
+    google_project_iam_member.bq_transfer_job_user,
+    google_bigquery_dataset_iam_member.bq_transfer_data_editor,
   ]
 
   create_duration = "30s"

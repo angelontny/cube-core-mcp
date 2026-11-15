@@ -66,21 +66,30 @@ resource "google_project_iam_member" "cube_bq_job_user" {
   member  = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 5. Additive IAM: BigQuery Data Editor (project level to read, write, and export pre-aggregations)
-resource "google_project_iam_member" "cube_bq_data_editor" {
-  project = var.project_id
-  role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.cloud_run_cube.email}"
+# 5. Additive IAM: BigQuery Data Editor scoped strictly to the pre-aggregations staging dataset
+resource "google_bigquery_dataset_iam_member" "cube_pre_aggs_editor" {
+  project    = var.project_id
+  dataset_id = "${var.environment}_pre_aggregations"
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 6. Additive IAM: Cloud Logging Writer
+# 6. Additive IAM: BigQuery Data Viewer scoped strictly to the analytics marts dataset
+resource "google_bigquery_dataset_iam_member" "cube_reporting_viewer" {
+  project    = var.reporting_project_id != "" ? var.reporting_project_id : var.project_id
+  dataset_id = var.reporting_dataset_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.cloud_run_cube.email}"
+}
+
+# 7. Additive IAM: Cloud Logging Writer
 resource "google_project_iam_member" "cube_logging" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 7. Additive IAM: Storage Object Admin (for Cube Store cache bucket access)
+# 8. Additive IAM: Storage Object Admin (for Cube Store cache bucket access)
 resource "google_storage_bucket_iam_member" "cube_storage_access" {
   count  = var.cube_store_bucket_name != "" ? 1 : 0
   bucket = var.cube_store_bucket_name
@@ -88,16 +97,7 @@ resource "google_storage_bucket_iam_member" "cube_storage_access" {
   member = "serviceAccount:${google_service_account.cloud_run_cube.email}"
 }
 
-# 8. Cross-Project Read Access (Conditional: only created if reporting_project_id differs from project_id)
-resource "google_bigquery_dataset_iam_member" "cross_project_reporting_reader" {
-  count      = (var.reporting_project_id != "" && var.reporting_project_id != var.project_id) ? 1 : 0
-  project    = var.reporting_project_id
-  dataset_id = var.reporting_dataset_id
-  role       = "roles/bigquery.dataViewer"
-  member     = "serviceAccount:${google_service_account.cloud_run_cube.email}"
-}
-
-# 8. Secret Manager: FastMCP Google OAuth Credentials
+# 9. Secret Manager: FastMCP Google OAuth Credentials
 resource "google_secret_manager_secret" "google_client_id" {
   secret_id = "fastmcp-google-client-id"
 
@@ -395,7 +395,8 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
   depends_on = [
     google_artifact_registry_repository.cube_repo,
     google_project_iam_member.cube_bq_job_user,
-    google_project_iam_member.cube_bq_data_editor,
+    google_bigquery_dataset_iam_member.cube_pre_aggs_editor,
+    google_bigquery_dataset_iam_member.cube_reporting_viewer,
     google_project_iam_member.cube_logging,
     google_secret_manager_secret_version.google_client_id_placeholder,
     google_secret_manager_secret_version.google_client_secret_placeholder,
