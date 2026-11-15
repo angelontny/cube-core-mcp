@@ -2,8 +2,10 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['pull', 'cubejs/cubestore:latest']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['tag', 'cubejs/cubestore:latest', 'asia-south1-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest']
+  args: ['tag', 'cubejs/cubestore:latest', '${_REGION}-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest']
+  args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest']
 images:
-- 'asia-south1-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest'
+- '${_REGION}-docker.pkg.dev/$PROJECT_ID/cube-repo/cube-store:latest'
+substitutions:
+  _REGION: 'asia-south1'

@@ -18,13 +18,13 @@ variable "reporting_dataset_id" {
 variable "region" {
   type        = string
   description = "The primary GCP region for regional resources (Cloud Run, GCS)."
-  default     = "us-central1"
+  default     = "asia-south1"
 }
 
 variable "zone" {
   type        = string
   description = "The GCP zone for zonal resources (Spot VM)."
-  default     = "us-central1-a"
+  default     = "asia-south1-c"
 }
 
 variable "environment" {
