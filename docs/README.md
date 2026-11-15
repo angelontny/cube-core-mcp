@@ -44,6 +44,7 @@ Practical runbooks for day-to-day administration, health verification, and debug
 Technical foundations explaining *why* the system is designed this way—including trade-offs, alternatives, dependencies, and temporary workarounds:
 
 * [C4 Architecture & Design Context](file:///home/angelo/projects/cube-core-mcp/docs/architecture/c4_architecture_and_design_context.md) — System Context (Level 1), Container Diagram (Level 2), Component Breakdown (Level 3), and Query Lifecycle (Level 4), supported by the Architectural Trade-offs Matrix and Known Workarounds.
+* [Production Readiness Audit & Hardening Roadmap](file:///home/angelo/projects/cube-core-mcp/docs/architecture/production_readiness_audit.md) — Comprehensive technical review identifying security vulnerabilities, reliability single-points-of-failure, and the 3-phase remediation plan.
 * [Architecture Decision Records (ADRs) Index](file:///home/angelo/projects/cube-core-mcp/docs/architecture/adrs/README.md):
   * [ADR-0001: Why Cube Store Cannot Run on Cloud Run](file:///home/angelo/projects/cube-core-mcp/docs/architecture/adrs/0001_why_cube_store_cannot_run_on_cloud_run.md)
   * [ADR-0002: Why systemd Supervises Cube Store on Container-Optimized OS](file:///home/angelo/projects/cube-core-mcp/docs/architecture/adrs/0002_why_systemd_supervises_cube_store_on_cos.md)

@@ -247,6 +247,7 @@ For the master documentation index, refer to [docs/README.md](docs/README.md).
 
 ### 2. Architecture, C4 Models & Decision Records
 * [C4 Architecture & Design Context](docs/architecture/c4_architecture_and_design_context.md) — System Context (L1), Containers (L2), Components (L3), Query Lifecycle (L4), and trade-offs.
+* [Production Readiness Audit & Hardening Roadmap](docs/architecture/production_readiness_audit.md) — Exhaustive review of security vulnerabilities, reliability single-points-of-failure, and remediation steps.
 * [Architecture Decision Records (ADRs)](docs/architecture/adrs/README.md) — Individual records (ADR 0001 through 0007) documenting key architectural choices.
 
 ### 3. Operational Runbooks & Troubleshooting
