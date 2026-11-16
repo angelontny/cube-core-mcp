@@ -108,8 +108,9 @@ class CubeClient:
             try:
                 response = await client.get(url, headers=headers)
             except httpx.RequestError as exc:
+                err_msg = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
                 raise CubeClientError(
-                    f"Network error connecting to Cube Core at {url}: {exc}"
+                    f"Network error connecting to Cube Core at {url}: {err_msg}"
                 ) from exc
 
             if response.status_code != 200:
@@ -133,8 +134,9 @@ class CubeClient:
             try:
                 response = await client.post(url, headers=headers, json=body)
             except httpx.RequestError as exc:
+                err_msg = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
                 raise CubeClientError(
-                    f"Network error executing query against {url}: {exc}"
+                    f"Network error executing query against {url}: {err_msg}"
                 ) from exc
 
             if response.status_code != 200:
@@ -165,8 +167,9 @@ class CubeClient:
             try:
                 response = await client.post(url, headers=headers, json=body)
             except httpx.RequestError as exc:
+                err_msg = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
                 raise CubeClientError(
-                    f"Network error executing SQL against {url}: {exc}"
+                    f"Network error executing SQL against {url}: {err_msg}"
                 ) from exc
 
             if response.status_code != 200:
@@ -209,7 +212,8 @@ class CubeClient:
             try:
                 response = await client.post(url, headers=headers, json=body)
             except httpx.RequestError as exc:
-                raise CubeClientError(f"Network error contacting {url}: {exc}") from exc
+                err_msg = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+                raise CubeClientError(f"Network error contacting {url}: {err_msg}") from exc
 
             if response.status_code != 200:
                 raise CubeClientError(
