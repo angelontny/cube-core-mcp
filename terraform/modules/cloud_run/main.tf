@@ -211,10 +211,6 @@ resource "google_cloud_run_v2_service" "cube_mcp" {
       name  = "cube-core"
       image = local.cube_image_url
 
-      ports {
-        container_port = 4000
-      }
-
       startup_probe {
         initial_delay_seconds = 2
         timeout_seconds       = 4
