@@ -215,8 +215,21 @@ resource "google_compute_per_instance_config" "cube_store" {
     internal_ip {
       interface_name = "nic0"
       ip_address {
-        address = var.cube_store_private_ip
+        address = var.cube_store_address_id != "" ? var.cube_store_address_id : var.cube_store_private_ip
       }
     }
   }
+}
+
+# 7. Convergence Guard: Wait for Spot VM boot, image pull, and systemd readiness
+# Guarantees that Cube Store is listening on port 3030 before downstream services (Cloud Run) connect.
+resource "time_sleep" "wait_for_cube_store_boot" {
+  count = var.enabled ? 1 : 0
+
+  depends_on = [
+    google_compute_per_instance_config.cube_store,
+    google_compute_instance_group_manager.cube_store_mig,
+  ]
+
+  create_duration = "45s"
 }

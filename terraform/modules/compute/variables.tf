@@ -35,6 +35,12 @@ variable "cube_store_private_ip" {
   description = "The static internal IP address reserved for the Cube Store cache node."
 }
 
+variable "cube_store_address_id" {
+  type        = string
+  description = "The resource ID or self-link of the reserved static internal IP address for Cube Store."
+  default     = ""
+}
+
 variable "cube_store_sa_email" {
   type        = string
   description = "The email of the dedicated service account attached to the Cube Store VM."

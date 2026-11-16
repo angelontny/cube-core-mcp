@@ -22,3 +22,8 @@ output "cube_store_internal_ip" {
   description = "The reserved internal IP address for the Cube Store cache node."
   value       = google_compute_address.cube_store_internal_ip.address
 }
+
+output "cube_store_internal_ip_address_id" {
+  description = "The resource ID of the reserved internal IP address for Cube Store."
+  value       = google_compute_address.cube_store_internal_ip.id
+}
